@@ -9,20 +9,17 @@ const VOCI = [
   { to: '/portfolio', label: 'Portfolio' },
 ]
 
-export function Logo({ chiaro = false }: { chiaro?: boolean }) {
+/** Logo su sfondo nero: su pagine chiare appare come un riquadro arrotondato. */
+export function Logo({ className = 'h-10' }: { className?: string }) {
   return (
-    <Link to="/" className="flex items-center gap-2.5 font-extrabold tracking-tight">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-600/30">
-        <Icon name="folder" className="h-5 w-5" />
-      </span>
-      <span className={chiaro ? 'text-white' : 'text-slate-900'}>{SITO.titolo}</span>
+    <Link to="/" className="inline-flex shrink-0" aria-label={`${SITO.titolo} – Home`}>
+      <img src="/logo-compatto.jpg" alt={SITO.titolo} width={480} height={154} className={`w-auto rounded-lg bg-black ${className}`} />
     </Link>
   )
 }
 
 export function PublicLayout() {
   const [aperto, setAperto] = useState(false)
-  const [scrollato, setScrollato] = useState(false)
   const { pathname } = useLocation()
   const { session } = useAuth()
 
@@ -31,18 +28,9 @@ export function PublicLayout() {
     window.scrollTo(0, 0)
   }, [pathname])
 
-  useEffect(() => {
-    const onScroll = () => setScrollato(window.scrollY > 8)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      <header
-        className={`sticky top-0 z-40 border-b transition ${scrollato || aperto ? 'border-slate-200/80 bg-white/90 backdrop-blur-md' : 'border-transparent bg-white/0'}`}
-      >
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
         <div className="container-sito flex h-16 items-center justify-between gap-4">
           <Logo />
           <nav className="hidden items-center gap-1 md:flex" aria-label="Navigazione principale">

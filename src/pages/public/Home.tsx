@@ -22,27 +22,20 @@ export default function Home() {
     <>
       <Seo />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
-          <div className="absolute -top-40 left-1/2 h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-gradient-to-br from-brand-200/70 via-violet-200/50 to-transparent blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgb(15_23_42/0.06)_1px,transparent_0)] [background-size:24px_24px] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
-        </div>
-        <div className="container-sito pt-16 pb-20 text-center sm:pt-24 sm:pb-24">
+      {/* Hero con il logo (lo sfondo nero combacia con quello dell'immagine) */}
+      <section className="bg-black">
+        <div className="container-sito pt-10 pb-14 text-center sm:pt-14 sm:pb-20">
           <Reveal>
-            <h1 className="mx-auto max-w-4xl text-4xl font-extrabold tracking-tight text-slate-900 sm:text-6xl">
-              {SITO.titolo}
+            <h1>
+              <img src="/logo-completo.jpg" alt={SITO.titolo} width={900} height={366} className="mx-auto w-full max-w-2xl" />
             </h1>
           </Reveal>
-          <Reveal ritardo={80}>
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-slate-600 sm:text-lg">{SITO.descrizione}</p>
-          </Reveal>
-          <Reveal ritardo={160}>
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <Reveal ritardo={120}>
+            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               <Link to="/portfolio" className="btn-primary px-6 py-3 text-base">
                 Vai al portfolio <Icon name="arrowRight" className="h-4 w-4" />
               </Link>
-              <Link to={session ? '/area' : '/login'} className="btn-secondary px-6 py-3 text-base">
+              <Link to={session ? '/area' : '/login'} className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
                 <Icon name="lock" className="h-4 w-4" /> Area riservata
               </Link>
             </div>
@@ -51,7 +44,7 @@ export default function Home() {
       </section>
 
       {/* Ultimi lavori */}
-      <section className="pb-20">
+      <section className="py-16 sm:py-20">
         <div className="container-sito">
           <Reveal className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
             <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Ultimi progetti</h2>

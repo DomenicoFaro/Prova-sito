@@ -9,7 +9,7 @@ export function AuthCard({ titolo, sottotitolo, children }: { titolo: string; so
       <div className="pointer-events-none absolute -top-40 left-1/2 h-[480px] w-[720px] -translate-x-1/2 rounded-full bg-brand-200/50 blur-3xl" aria-hidden="true" />
       <div className="relative w-full max-w-md">
         <div className="mb-8 flex justify-center">
-          <Logo />
+          <Logo className="h-14" />
         </div>
         <div className="card p-6 shadow-xl shadow-slate-900/5 sm:p-8">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{titolo}</h1>
