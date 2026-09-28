@@ -12,13 +12,12 @@ import { esegui, useQuery } from '../../../lib/useQuery'
 export default function AdminRiepilogo() {
   const [periodo, setPeriodo] = useState<Periodo>('sempre')
   const { dati, caricamento, errore, ricarica } = useQuery(async () => {
-    const [progetti, guadagni, profili, nuove] = await Promise.all([
+    const [progetti, guadagni, profili] = await Promise.all([
       esegui<Progetto[]>(supabase.from('progetti').select('*').order('created_at', { ascending: false })),
       esegui<Guadagno[]>(supabase.from('v_guadagni').select('*')),
       esegui<Profilo[]>(supabase.from('profiles').select('*')),
-      supabase.from('richieste_contatto').select('id', { count: 'exact', head: true }).eq('stato', 'nuova'),
     ])
-    return { progetti, guadagni, profili, richiesteNuove: nuove.count ?? 0 }
+    return { progetti, guadagni, profili }
   })
 
   const calcolo = useMemo(() => {
@@ -81,13 +80,6 @@ export default function AdminRiepilogo() {
             <StatCard etichetta="Margine agenzia" valore={formatEuro(calcolo.margine)} icona="chart" tono="verde" nota={calcolo.fatturato > 0 ? `${Math.round((calcolo.margine / calcolo.fatturato) * 100)}% del fatturato` : undefined} />
             <StatCard etichetta="Progetti attivi" valore={calcolo.attivi} icona="folder" tono="slate" nota="In lavorazione o manutenzione" />
           </div>
-
-          {dati.richiesteNuove > 0 && (
-            <Link to="/area/admin/richieste" className="flex items-center gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-4 text-sm font-semibold text-brand-800 hover:bg-brand-100">
-              <Icon name="inbox" /> Hai {dati.richiesteNuove} {dati.richiesteNuove === 1 ? 'nuova richiesta' : 'nuove richieste'} di contatto
-              <Icon name="arrowRight" className="ml-auto h-4 w-4" />
-            </Link>
-          )}
 
           <div className="grid gap-6 xl:grid-cols-5">
             <section className="card overflow-hidden xl:col-span-3">

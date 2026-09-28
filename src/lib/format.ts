@@ -1,4 +1,4 @@
-import type { StatoPagamento, StatoProgetto, StatoRichiesta } from './types'
+import type { StatoPagamento, StatoProgetto, StatoRichiesta, StatoVendita } from './types'
 
 const euro = new Intl.NumberFormat('it-IT', {
   style: 'currency',
@@ -14,6 +14,14 @@ export function formatEuro(valore: number | string | null | undefined): string {
   const testo = euro.format(Number(valore ?? 0))
   // Fallback per browser che ignorano useGrouping: 'always'
   return testo.replace(/^(-?)(\d)(\d{3}),/, '$1$2.$3,')
+}
+
+/** "1.250,50" → 1250.5 · "12,5" → 12.5 · "12.5" → 12.5 (NaN se non valido) */
+export function parseNumero(testo: string | number): number {
+  let s = String(testo).trim().replace(/[\s€%]/g, '')
+  // Con la virgola il punto è separatore delle migliaia; senza, è il decimale
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.')
+  return s === '' ? NaN : Number(s)
 }
 
 export function formatPercentuale(valore: number | string | null | undefined): string {
@@ -54,6 +62,14 @@ export const ETICHETTE_STATO_RICHIESTA: Record<StatoRichiesta, string> = {
   letta: 'Letta',
   gestita: 'Gestita',
 }
+
+export const ETICHETTE_STATO_VENDITA: Record<StatoVendita, string> = {
+  in_attesa: 'In attesa',
+  approvata: 'Approvata',
+  rifiutata: 'Rifiutata',
+}
+
+export const TIPI_SITO = ['Sito vetrina', 'E-commerce', 'Web app', 'Prenotazioni online', 'Restyling', 'Altro'] as const
 
 /** Data ISO (YYYY-MM-DD) di oggi nel fuso locale. */
 export function oggiISO(): string {

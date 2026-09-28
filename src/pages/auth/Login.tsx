@@ -32,8 +32,8 @@ export default function Login() {
   const senzaProfilo = session && !profilo
 
   return (
-    <AuthCard titolo="Area riservata" sottotitolo="Accedi con le credenziali ricevute dall'agenzia.">
-      <Seo titolo="Accedi" noindex />
+    <AuthCard titolo="Area riservata" sottotitolo="Accedi con le tue credenziali.">
+      <Seo titolo="Accedi" />
       {!supabaseConfigurato && (
         <div className="mb-4">
           <MessaggioErrore>Supabase non è configurato: imposta le variabili VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.</MessaggioErrore>

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Icon } from '../../../components/Icon'
 import { Screenshot } from '../../../components/Screenshot'
 import { Caricamento, IntestazionePagina, MessaggioErrore, MessaggioSuccesso, Modale, Spinner } from '../../../components/ui'
-import { ETICHETTE_STATO_PROGETTO, formatEuro, formatPercentuale } from '../../../lib/format'
+import { ETICHETTE_STATO_PROGETTO, formatEuro, formatPercentuale, parseNumero } from '../../../lib/format'
 import { BUCKET_SCREENSHOTS, caricaImmagine, messaggioErrore, supabase } from '../../../lib/supabase'
 import type { Assegnazione, Profilo, Progetto, StatoProgetto } from '../../../lib/types'
 import { esegui, useQuery } from '../../../lib/useQuery'
@@ -48,7 +48,7 @@ const VUOTO: FormProgetto = {
 }
 
 const righe = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean)
-const numero = (s: string) => Number(String(s).replace(',', '.'))
+const numero = parseNumero
 
 export default function AdminProgettoForm() {
   const { id } = useParams()
@@ -113,7 +113,8 @@ export default function AdminProgettoForm() {
     return <MessaggioErrore>Progetto non trovato. <Link to="/area/admin/progetti" className="font-semibold underline">Torna ai progetti</Link></MessaggioErrore>
 
   const collaboratori = dati?.collaboratori ?? []
-  const prezzo = numero(form.prezzo_totale) || 0
+  const prezzoInserito = form.prezzo_totale.trim() ? numero(form.prezzo_totale) : 0
+  const prezzo = Number.isFinite(prezzoInserito) ? prezzoInserito : 0
   const sommaPerc = assegnazioni.reduce((s, a) => s + (numero(a.percentuale) || 0), 0)
   const oltre100 = sommaPerc > 100
   const margine = prezzo * (1 - Math.min(sommaPerc, 100) / 100)
@@ -159,7 +160,10 @@ export default function AdminProgettoForm() {
     setSuccesso(null)
 
     if (!form.nome.trim()) return setErrore('Il nome del progetto è obbligatorio.')
-    if (form.prezzo_totale && (!Number.isFinite(prezzo) || prezzo < 0)) return setErrore('Prezzo non valido.')
+    if (!Number.isFinite(prezzoInserito) || prezzoInserito < 0) return setErrore('Prezzo non valido.')
+    let url = form.url.trim()
+    if (url && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = `https://${url}`
+    if (url && !/^https?:\/\/[^\s/]+\.[^\s]+$/i.test(url)) return setErrore('URL del sito non valido (es. https://www.esempio.it).')
     if (oltre100) return setErrore(`La somma delle percentuali è ${formatPercentuale(sommaPerc)}: non può superare il 100%.`)
     const ids = assegnazioni.map((a) => a.collaboratore_id)
     if (new Set(ids).size !== ids.length) return setErrore('Lo stesso collaboratore è assegnato più volte.')
@@ -173,7 +177,7 @@ export default function AdminProgettoForm() {
       const payload = {
         nome: form.nome.trim(),
         cliente: form.cliente.trim(),
-        url: form.url.trim() || null,
+        url: url || null,
         categoria: form.categoria.trim(),
         descrizione: form.descrizione.trim(),
         funzionalita: righe(form.funzionalita),

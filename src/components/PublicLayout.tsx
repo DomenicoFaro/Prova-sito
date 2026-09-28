@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
-import { AGENZIA } from '../config'
+import { SITO } from '../config'
 import { Icon } from './Icon'
 import { useAuth } from '../auth/AuthProvider'
 
 const VOCI = [
   { to: '/', label: 'Home', end: true },
   { to: '/portfolio', label: 'Portfolio' },
-  { to: '/contatti', label: 'Contatti' },
 ]
 
 export function Logo({ chiaro = false }: { chiaro?: boolean }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 font-extrabold tracking-tight">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-600 text-sm text-white shadow-sm shadow-brand-600/30">
-        {AGENZIA.nome.slice(0, 1).toUpperCase()}
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-600 text-white shadow-sm shadow-brand-600/30">
+        <Icon name="folder" className="h-5 w-5" />
       </span>
-      <span className={chiaro ? 'text-white' : 'text-slate-900'}>{AGENZIA.nome}</span>
+      <span className={chiaro ? 'text-white' : 'text-slate-900'}>{SITO.titolo}</span>
     </Link>
   )
 }
@@ -99,54 +98,19 @@ export function PublicLayout() {
         <Outlet />
       </main>
 
-      <footer className="bg-slate-950 text-slate-400">
-        <div className="container-sito grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-2">
-            <Logo chiaro />
-            <p className="mt-4 max-w-sm text-sm leading-relaxed">{AGENZIA.descrizione}</p>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-white">Esplora</p>
-            <ul className="mt-3 space-y-2 text-sm">
-              {VOCI.map((v) => (
-                <li key={v.to}>
-                  <Link to={v.to} className="hover:text-white">
-                    {v.label}
-                  </Link>
-                </li>
-              ))}
-              <li>
-                <Link to="/login" className="hover:text-white">
-                  Area riservata
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-white">Contatti</p>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li>
-                <a href={`mailto:${AGENZIA.email}`} className="hover:text-white">
-                  {AGENZIA.email}
-                </a>
-              </li>
-              <li>
-                <a href={`tel:${AGENZIA.telefono.replace(/\s/g, '')}`} className="hover:text-white">
-                  {AGENZIA.telefono}
-                </a>
-              </li>
-              <li>
-                <a href={`https://wa.me/${AGENZIA.whatsapp}`} target="_blank" rel="noopener noreferrer" className="hover:text-white">
-                  WhatsApp
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        <div className="border-t border-white/10">
-          <div className="container-sito py-5 text-xs">
-            © {new Date().getFullYear()} {AGENZIA.nome}. Tutti i diritti riservati.
-          </div>
+      <footer className="border-t border-slate-100">
+        <div className="container-sito flex flex-wrap items-center justify-between gap-3 py-6 text-sm text-slate-500">
+          <nav className="flex gap-4" aria-label="Navigazione secondaria">
+            {VOCI.map((v) => (
+              <Link key={v.to} to={v.to} className="hover:text-slate-900">
+                {v.label}
+              </Link>
+            ))}
+            <Link to={session ? '/area' : '/login'} className="hover:text-slate-900">
+              Area riservata
+            </Link>
+          </nav>
+          <span>Sito privato</span>
         </div>
       </footer>
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
-import { AGENZIA } from '../config'
+import { SITO } from '../config'
 import { Icon, type NomeIcona } from './Icon'
 import { Seo } from './Seo'
 import { Avatar } from './Avatar'
@@ -16,12 +16,15 @@ interface Voce {
 const VOCI_ADMIN: Voce[] = [
   { to: '/area/admin', label: 'Riepilogo', icona: 'chart', end: true },
   { to: '/area/admin/progetti', label: 'Progetti', icona: 'folder' },
+  { to: '/area/admin/vendite', label: 'Vendite', icona: 'handshake' },
   { to: '/area/admin/pagamenti', label: 'Pagamenti', icona: 'wallet' },
   { to: '/area/admin/collaboratori', label: 'Collaboratori', icona: 'users' },
-  { to: '/area/admin/richieste', label: 'Richieste', icona: 'inbox' },
 ]
 
-const VOCI_COLLABORATORE: Voce[] = [{ to: '/area/dashboard', label: 'I miei siti', icona: 'chart' }]
+const VOCI_COLLABORATORE: Voce[] = [
+  { to: '/area/dashboard', label: 'I miei siti', icona: 'chart' },
+  { to: '/area/vendite', label: 'Vendite', icona: 'handshake' },
+]
 
 export function AreaLayout() {
   const { profilo, isAdmin, esci } = useAuth()
@@ -35,8 +38,10 @@ export function AreaLayout() {
   const sidebar = (
     <div className="flex h-full flex-col">
       <Link to="/" className="flex h-16 shrink-0 items-center gap-2.5 px-5 font-extrabold tracking-tight text-white">
-        <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500 text-sm">{AGENZIA.nome.slice(0, 1)}</span>
-        <span className="truncate">{AGENZIA.nome}</span>
+        <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500">
+          <Icon name="folder" className="h-4 w-4" />
+        </span>
+        <span className="truncate">{SITO.titolo}</span>
       </Link>
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Area riservata">
         {voci.map((v) => (
@@ -70,7 +75,7 @@ export function AreaLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Seo titolo="Area riservata" noindex />
+      <Seo titolo="Area riservata" />
       {/* Sidebar desktop */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 bg-slate-950 lg:block">{sidebar}</aside>
 

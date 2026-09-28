@@ -4,8 +4,9 @@ import {
   ETICHETTE_STATO_PAGAMENTO,
   ETICHETTE_STATO_PROGETTO,
   ETICHETTE_STATO_RICHIESTA,
+  ETICHETTE_STATO_VENDITA,
 } from '../lib/format'
-import type { StatoPagamento, StatoProgetto, StatoRichiesta } from '../lib/types'
+import type { StatoPagamento, StatoProgetto, StatoRichiesta, StatoVendita } from '../lib/types'
 
 export function Spinner({ className = 'h-5 w-5' }: { className?: string }) {
   return (
@@ -130,6 +131,15 @@ export function BadgeStatoRichiesta({ stato }: { stato: StatoRichiesta }) {
     gestita: 'bg-emerald-50 text-emerald-700',
   }[stato]
   return <Pill className={c}>{ETICHETTE_STATO_RICHIESTA[stato]}</Pill>
+}
+
+export function BadgeStatoVendita({ stato }: { stato: StatoVendita }) {
+  const c = {
+    in_attesa: 'bg-amber-50 text-amber-700',
+    approvata: 'bg-emerald-50 text-emerald-700',
+    rifiutata: 'bg-red-50 text-red-700',
+  }[stato]
+  return <Pill className={c}>{ETICHETTE_STATO_VENDITA[stato]}</Pill>
 }
 
 export function IntestazionePagina({

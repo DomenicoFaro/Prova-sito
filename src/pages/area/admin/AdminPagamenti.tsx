@@ -10,7 +10,7 @@ import {
   StatCard,
   Vuoto,
 } from '../../../components/ui'
-import { formatData, formatEuro, oggiISO } from '../../../lib/format'
+import { formatData, formatEuro, oggiISO, parseNumero } from '../../../lib/format'
 import { messaggioErrore, supabase } from '../../../lib/supabase'
 import type { Guadagno, Pagamento, Profilo } from '../../../lib/types'
 import { esegui, useQuery } from '../../../lib/useQuery'
@@ -70,7 +70,7 @@ export default function AdminPagamenti() {
   async function registra(e: FormEvent) {
     e.preventDefault()
     setErrore(null)
-    const importo = Number(form.importo.replace(',', '.'))
+    const importo = parseNumero(form.importo)
     if (!form.assegnazione_id) return setErrore('Seleziona collaboratore e progetto.')
     if (!Number.isFinite(importo) || importo <= 0) return setErrore("Inserisci un importo valido maggiore di zero.")
     setSalvataggio(true)

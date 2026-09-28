@@ -32,6 +32,9 @@ const PATHS = {
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-13v4l3 2',
   upload: 'M12 16V4m-5 5 5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3',
   ban: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM5.6 5.6l12.8 12.8',
+  file: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Zm0 0v5h5M9 13h6m-6 4h4',
+  download: 'M12 4v12m-5-5 5 5 5-5M4 20h16',
+  handshake: 'M3 12l4-4 4 2 3-3 7 7-4 4-3-1-2 2-3-1-2-2-3-1 3-3Zm8-2 3 3',
 } as const
 
 export type NomeIcona = keyof typeof PATHS

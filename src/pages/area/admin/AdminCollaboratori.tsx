@@ -4,7 +4,7 @@ import { useAuth } from '../../../auth/AuthProvider'
 import { Avatar } from '../../../components/Avatar'
 import { Icon } from '../../../components/Icon'
 import { Caricamento, IntestazionePagina, MessaggioErrore, MessaggioSuccesso, Modale, Spinner, Vuoto } from '../../../components/ui'
-import { formatEuro, formatPercentuale } from '../../../lib/format'
+import { formatEuro, formatPercentuale, parseNumero } from '../../../lib/format'
 import { messaggioErrore, supabase } from '../../../lib/supabase'
 import type { Guadagno, Profilo, Ruolo } from '../../../lib/types'
 import { esegui, useQuery } from '../../../lib/useQuery'
@@ -15,9 +15,10 @@ interface FormCollab {
   ruolo: Ruolo
   percentuale_default: string
   attivo: boolean
+  password: string
 }
 
-const VUOTO: FormCollab = { nome: '', email: '', ruolo: 'collaboratore', percentuale_default: '0', attivo: true }
+const VUOTO: FormCollab = { nome: '', email: '', ruolo: 'collaboratore', percentuale_default: '0', attivo: true, password: '' }
 
 export default function AdminCollaboratori() {
   const { profilo: io } = useAuth()
@@ -56,7 +57,7 @@ export default function AdminCollaboratori() {
 
   function apriModifica(p: Profilo) {
     setErrore(null)
-    setForm({ nome: p.nome, email: p.email, ruolo: p.ruolo, percentuale_default: String(p.percentuale_default), attivo: p.attivo })
+    setForm({ nome: p.nome, email: p.email, ruolo: p.ruolo, percentuale_default: String(p.percentuale_default), attivo: p.attivo, password: '' })
     setModale(p)
   }
 
@@ -64,32 +65,28 @@ export default function AdminCollaboratori() {
     e.preventDefault()
     setErrore(null)
     setSuccesso(null)
-    const perc = Number(form.percentuale_default.replace(',', '.'))
+    const perc = parseNumero(form.percentuale_default)
     if (!form.nome.trim()) return setErrore('Il nome è obbligatorio.')
     if (!Number.isFinite(perc) || perc < 0 || perc > 100) return setErrore('La percentuale deve essere tra 0 e 100.')
+    if ((modale === 'nuovo' || form.password) && form.password.length < 8) {
+      return setErrore('La password deve contenere almeno 8 caratteri.')
+    }
 
     setSalvataggio(true)
     try {
       if (modale === 'nuovo') {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) throw new Error('Email non valida.')
-        // La creazione passa dalla Edge Function (usa la service role key lato server)
-        const { data, error } = await supabase.functions.invoke('crea-collaboratore', {
-          body: {
-            nome: form.nome.trim(),
-            email: form.email.trim(),
-            ruolo: form.ruolo,
-            percentuale_default: perc,
-            redirect_to: `${window.location.origin}/reimposta-password`,
-          },
-        })
-        if (error) {
-          // Prova a leggere il messaggio d'errore restituito dalla funzione
-          const ctx = (error as { context?: Response }).context
-          const body = ctx && typeof ctx.json === 'function' ? await ctx.json().catch(() => null) : null
-          throw new Error(body?.error ?? error.message)
-        }
-        if (data?.error) throw new Error(data.error)
-        setSuccesso(`Invito inviato a ${form.email.trim()}. Riceverà un'email per impostare la password.`)
+        // Funzione SQL admin_crea_account (supabase/account.sql): crea l'utente già confermato
+        await esegui(
+          supabase.rpc('admin_crea_account', {
+            p_nome: form.nome.trim(),
+            p_email: form.email.trim(),
+            p_password: form.password,
+            p_ruolo: form.ruolo,
+            p_percentuale: perc,
+          }),
+        )
+        setSuccesso(`Account creato: ${form.email.trim()} può già accedere con la password che hai scelto.`)
       } else if (modale) {
         if (modale.id === io?.id && (form.ruolo !== 'admin' || !form.attivo)) {
           throw new Error('Non puoi togliere a te stesso il ruolo di admin o disattivare il tuo account.')
@@ -100,7 +97,10 @@ export default function AdminCollaboratori() {
             .update({ nome: form.nome.trim(), ruolo: form.ruolo, percentuale_default: perc, attivo: form.attivo })
             .eq('id', modale.id),
         )
-        setSuccesso('Collaboratore aggiornato.')
+        if (form.password) {
+          await esegui(supabase.rpc('admin_imposta_password', { p_user_id: modale.id, p_password: form.password }))
+        }
+        setSuccesso(form.password ? 'Account aggiornato e password cambiata.' : 'Account aggiornato.')
       }
       setModale(null)
       ricarica()
@@ -202,7 +202,7 @@ export default function AdminCollaboratori() {
         </div>
       )}
 
-      <Modale aperta={modale !== null} titolo={modale === 'nuovo' ? 'Nuovo account' : 'Modifica collaboratore'} onChiudi={() => setModale(null)}>
+      <Modale aperta={modale !== null} titolo={modale === 'nuovo' ? 'Nuovo account' : 'Modifica account'} onChiudi={() => setModale(null)}>
         <form onSubmit={salva} className="space-y-4">
           {errore && <MessaggioErrore>{errore}</MessaggioErrore>}
           <div>
@@ -211,7 +211,22 @@ export default function AdminCollaboratori() {
           </div>
           <div>
             <label className="label" htmlFor="ce">Email</label>
-            <input id="ce" type="email" className="input" required disabled={modale !== 'nuovo'} value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+            <input id="ce" type="email" className="input" required autoComplete="off" disabled={modale !== 'nuovo'} value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+            {modale === 'nuovo' && <p className="mt-1 text-xs text-slate-500">Serve per accedere. Non viene inviata nessuna email.</p>}
+          </div>
+          <div>
+            <label className="label" htmlFor="cpw">{modale === 'nuovo' ? 'Password' : 'Nuova password'}</label>
+            <input
+              id="cpw"
+              type="text"
+              className="input"
+              autoComplete="new-password"
+              minLength={8}
+              required={modale === 'nuovo'}
+              placeholder={modale === 'nuovo' ? 'Almeno 8 caratteri' : 'Lascia vuoto per non cambiarla'}
+              value={form.password}
+              onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -234,13 +249,13 @@ export default function AdminCollaboratori() {
           )}
           {modale === 'nuovo' && (
             <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
-              Il collaboratore riceverà un'email di invito con il link per scegliere la sua password.
+              <strong>Admin</strong> vede e gestisce tutto. <strong>Collaboratore</strong> vede solo i progetti a cui lo assegni, i suoi guadagni e i pagamenti ricevuti.
             </p>
           )}
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setModale(null)}>Annulla</button>
             <button type="submit" className="btn-primary" disabled={salvataggio}>
-              {salvataggio && <Spinner className="h-4 w-4" />} {modale === 'nuovo' ? 'Crea e invita' : 'Salva'}
+              {salvataggio && <Spinner className="h-4 w-4" />} {modale === 'nuovo' ? 'Crea account' : 'Salva'}
             </button>
           </div>
         </form>

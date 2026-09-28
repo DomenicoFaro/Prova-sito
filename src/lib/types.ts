@@ -2,6 +2,7 @@ export type Ruolo = 'admin' | 'collaboratore'
 export type StatoProgetto = 'in_lavorazione' | 'consegnato' | 'manutenzione'
 export type StatoPagamento = 'pagato' | 'parziale' | 'da_pagare'
 export type StatoRichiesta = 'nuova' | 'letta' | 'gestita'
+export type StatoVendita = 'in_attesa' | 'approvata' | 'rifiutata'
 
 export interface Profilo {
   id: string
@@ -86,6 +87,29 @@ export interface Guadagno {
   pagato: number
   residuo: number
   stato_pagamento: StatoPagamento
+}
+
+/** Riga della tabella `vendite` (supabase/vendite.sql). */
+export interface Vendita {
+  id: string
+  collaboratore_id: string
+  cliente_nome: string
+  cliente_codice: string
+  cliente_email: string
+  cliente_telefono: string
+  cliente_indirizzo: string
+  sito_nome: string
+  tipo_sito: string
+  dominio: string
+  prezzo: number
+  acconto: number
+  data_firma: string
+  consegna_prevista: string | null
+  note: string
+  allegati: string[]
+  stato: StatoVendita
+  progetto_id: string | null
+  created_at: string
 }
 
 export interface RichiestaContatto {

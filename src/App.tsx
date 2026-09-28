@@ -10,24 +10,25 @@ import Home from './pages/public/Home'
 // Parte pubblica secondaria e area riservata caricate su richiesta
 const Portfolio = lazy(() => import('./pages/public/Portfolio'))
 const ProgettoDettaglio = lazy(() => import('./pages/public/ProgettoDettaglio'))
-const Contatti = lazy(() => import('./pages/public/Contatti'))
 const NotFound = lazy(() => import('./pages/public/NotFound'))
 const Login = lazy(() => import('./pages/auth/Login'))
 const PasswordDimenticata = lazy(() => import('./pages/auth/PasswordDimenticata'))
 const ReimpostaPassword = lazy(() => import('./pages/auth/ReimpostaPassword'))
 const Dashboard = lazy(() => import('./pages/area/collaboratore/Dashboard'))
 const DettaglioAssegnazione = lazy(() => import('./pages/area/collaboratore/DettaglioAssegnazione'))
+const Vendite = lazy(() => import('./pages/area/collaboratore/Vendite'))
+const NuovaVendita = lazy(() => import('./pages/area/collaboratore/NuovaVendita'))
 const Profilo = lazy(() => import('./pages/area/Profilo'))
 const AdminRiepilogo = lazy(() => import('./pages/area/admin/AdminRiepilogo'))
 const AdminProgetti = lazy(() => import('./pages/area/admin/AdminProgetti'))
 const AdminProgettoForm = lazy(() => import('./pages/area/admin/AdminProgettoForm'))
 const AdminPagamenti = lazy(() => import('./pages/area/admin/AdminPagamenti'))
 const AdminCollaboratori = lazy(() => import('./pages/area/admin/AdminCollaboratori'))
+const AdminVendite = lazy(() => import('./pages/area/admin/AdminVendite'))
 const AdminVistaCome = lazy(() => import('./pages/area/admin/AdminVistaCome'))
 const AdminVistaComeDettaglio = lazy(() =>
   import('./pages/area/admin/AdminVistaCome').then((m) => ({ default: m.AdminVistaComeDettaglio })),
 )
-const AdminRichieste = lazy(() => import('./pages/area/admin/AdminRichieste'))
 
 export default function App() {
   return (
@@ -39,7 +40,6 @@ export default function App() {
               <Route index element={<Home />} />
               <Route path="portfolio" element={<Portfolio />} />
               <Route path="portfolio/:id" element={<ProgettoDettaglio />} />
-              <Route path="contatti" element={<Contatti />} />
               <Route path="*" element={<NotFound />} />
             </Route>
 
@@ -52,6 +52,8 @@ export default function App() {
                 <Route index element={<RedirectRuolo />} />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="dashboard/:assegnazioneId" element={<DettaglioAssegnazione />} />
+                <Route path="vendite" element={<Vendite />} />
+                <Route path="vendite/nuova" element={<NuovaVendita />} />
                 <Route path="profilo" element={<Profilo />} />
 
                 <Route path="admin" element={<RichiedeAdmin />}>
@@ -60,10 +62,10 @@ export default function App() {
                   <Route path="progetti/nuovo" element={<AdminProgettoForm />} />
                   <Route path="progetti/:id" element={<AdminProgettoForm />} />
                   <Route path="pagamenti" element={<AdminPagamenti />} />
+                  <Route path="vendite" element={<AdminVendite />} />
                   <Route path="collaboratori" element={<AdminCollaboratori />} />
                   <Route path="collaboratori/:id" element={<AdminVistaCome />} />
                   <Route path="collaboratori/:id/progetti/:assegnazioneId" element={<AdminVistaComeDettaglio />} />
-                  <Route path="richieste" element={<AdminRichieste />} />
                 </Route>
               </Route>
             </Route>

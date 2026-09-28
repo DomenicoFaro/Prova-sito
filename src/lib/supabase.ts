@@ -42,6 +42,7 @@ export function messaggioErrore(err: unknown): string {
         : 'Si è verificato un errore imprevisto.'
   if (/invalid login credentials/i.test(msg)) return 'Email o password non corretti.'
   if (/email not confirmed/i.test(msg)) return "Email non ancora confermata: controlla la tua casella di posta."
+  if (!supabaseConfigurato) return 'Supabase non è configurato: crea il file .env.local (vedi .env.example).'
   if (/failed to fetch|networkerror/i.test(msg)) return 'Impossibile contattare il server. Controlla la connessione.'
   if (/row-level security|permission denied/i.test(msg)) return 'Non hai i permessi per eseguire questa operazione.'
   if (/rate limit/i.test(msg)) return 'Troppi tentativi ravvicinati: riprova tra qualche minuto.'

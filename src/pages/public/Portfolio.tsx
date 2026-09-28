@@ -33,15 +33,13 @@ export default function Portfolio() {
 
   return (
     <>
-      <Seo titolo="Portfolio" descrizione="I siti web, gli e-commerce e le web app che abbiamo realizzato per i nostri clienti." />
+      <Seo titolo="Tutti i progetti" />
       <section className="border-b border-slate-100 bg-gradient-to-b from-brand-50/60 to-white">
         <div className="container-sito py-14 sm:py-20">
           <Reveal>
             <p className="text-sm font-semibold tracking-wide text-brand-600 uppercase">Portfolio</p>
-            <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">I nostri lavori</h1>
-            <p className="mt-4 max-w-2xl text-slate-600">
-              Una selezione dei siti che abbiamo progettato e sviluppato. Ognuno è pensato su misura per gli obiettivi del cliente.
-            </p>
+            <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Tutti i progetti</h1>
+            <p className="mt-4 max-w-2xl text-slate-600">Filtra per categoria o apri un progetto per vederne i dettagli.</p>
           </Reveal>
         </div>
       </section>

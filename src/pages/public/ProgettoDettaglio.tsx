@@ -31,7 +31,7 @@ export default function ProgettoDettaglio() {
   if (!p)
     return (
       <div className="container-sito py-16">
-        <Seo titolo="Progetto non trovato" noindex />
+        <Seo titolo="Progetto non trovato" />
         <Vuoto titolo="Progetto non trovato">
           <Link to="/portfolio" className="font-semibold text-brand-700">
             Torna al portfolio
@@ -44,7 +44,7 @@ export default function ProgettoDettaglio() {
 
   return (
     <>
-      <Seo titolo={p.nome} descrizione={p.descrizione.slice(0, 160)} immagine={p.screenshot_url} />
+      <Seo titolo={p.nome} />
       <section className="container-sito py-10 sm:py-14">
         <Link to="/portfolio" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900">
           <Icon name="arrowLeft" className="h-4 w-4" /> Portfolio
@@ -129,9 +129,6 @@ export default function ProgettoDettaglio() {
                   </a>
                 </div>
               )}
-              <Link to="/contatti" className="btn-secondary w-full">
-                Vuoi un sito simile? Contattaci
-              </Link>
             </aside>
           </Reveal>
         </div>
