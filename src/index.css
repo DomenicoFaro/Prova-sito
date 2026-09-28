@@ -67,6 +67,67 @@
   }
 }
 
+/* Logo: bordi dell'immagine sfumati, così il fondo nero si scioglie in quello della pagina */
+.logo-sfumato {
+  -webkit-mask-image: radial-gradient(ellipse 60% 62% at 50% 50%, #000 80%, transparent 100%);
+  mask-image: radial-gradient(ellipse 60% 62% at 50% 50%, #000 80%, transparent 100%);
+}
+
+/* Entrata del logo: da sfocato e trasparente a nitido */
+@keyframes logo-entrata {
+  from {
+    opacity: 0;
+    filter: blur(14px);
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+.logo-entrata {
+  animation: logo-entrata 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Comparsa in dissolvenza (per i pulsanti sotto al logo) */
+@keyframes dissolvenza {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.dissolvenza {
+  animation: dissolvenza 0.9s ease-out both;
+}
+
+/* Bagliore blu dietro al logo che "respira" piano */
+@keyframes bagliore {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+.bagliore {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, rgb(37 99 235 / 0.55), rgb(14 165 233 / 0.15) 60%, transparent);
+  filter: blur(40px);
+  animation: bagliore 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
 /* Animazioni leggere allo scroll */
 .reveal {
   opacity: 0;
@@ -78,6 +139,11 @@
   transform: none;
 }
 @media (prefers-reduced-motion: reduce) {
+  .logo-entrata,
+  .dissolvenza,
+  .bagliore {
+    animation: none;
+  }
   .reveal {
     opacity: 1;
     transform: none;

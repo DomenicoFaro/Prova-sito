@@ -38,7 +38,7 @@ export function AreaLayout() {
   const sidebar = (
     <div className="flex h-full flex-col">
       <Link to="/" className="flex h-16 shrink-0 items-center px-5" aria-label={`${SITO.titolo} – Home`}>
-        <img src="/logo-compatto.jpg" alt={SITO.titolo} width={480} height={154} className="h-10 w-auto" />
+        <img src="/logo-compatto.jpg" alt={SITO.titolo} width={480} height={154} className="h-11 w-auto" />
       </Link>
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Area riservata">
         {voci.map((v) => (

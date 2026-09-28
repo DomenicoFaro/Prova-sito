@@ -9,11 +9,11 @@ const VOCI = [
   { to: '/portfolio', label: 'Portfolio' },
 ]
 
-/** Logo su sfondo nero: su pagine chiare appare come un riquadro arrotondato. */
-export function Logo({ className = 'h-10' }: { className?: string }) {
+/** Logo su fondo nero: va messo su superfici nere, dove si fonde con lo sfondo. */
+export function Logo({ className = 'h-11' }: { className?: string }) {
   return (
     <Link to="/" className="inline-flex shrink-0" aria-label={`${SITO.titolo} – Home`}>
-      <img src="/logo-compatto.jpg" alt={SITO.titolo} width={480} height={154} className={`w-auto rounded-lg bg-black ${className}`} />
+      <img src="/logo-compatto.jpg" alt={SITO.titolo} width={480} height={154} className={`w-auto ${className}`} />
     </Link>
   )
 }
@@ -30,7 +30,7 @@ export function PublicLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-black">
         <div className="container-sito flex h-16 items-center justify-between gap-4">
           <Logo />
           <nav className="hidden items-center gap-1 md:flex" aria-label="Navigazione principale">
@@ -40,7 +40,7 @@ export function PublicLayout() {
                 to={v.to}
                 end={v.end}
                 className={({ isActive }) =>
-                  `rounded-lg px-3 py-2 text-sm font-semibold transition ${isActive ? 'text-brand-700' : 'text-slate-600 hover:text-slate-900'}`
+                  `rounded-lg px-3 py-2 text-sm font-semibold transition ${isActive ? 'text-sky-400' : 'text-slate-300 hover:text-white'}`
                 }
               >
                 {v.label}
@@ -48,11 +48,11 @@ export function PublicLayout() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
-            <Link to={session ? '/area' : '/login'} className="btn-secondary hidden py-2 sm:inline-flex">
+            <Link to={session ? '/area' : '/login'} className="btn hidden py-2 text-white ring-1 ring-white/20 hover:bg-white/10 sm:inline-flex">
               <Icon name="lock" className="h-4 w-4" /> Area riservata
             </Link>
             <button
-              className="btn-ghost p-2 md:hidden"
+              className="btn p-2 text-slate-200 hover:bg-white/10 md:hidden"
               onClick={() => setAperto((a) => !a)}
               aria-expanded={aperto}
               aria-label={aperto ? 'Chiudi menu' : 'Apri menu'}
@@ -69,7 +69,7 @@ export function PublicLayout() {
                 to={v.to}
                 end={v.end}
                 className={({ isActive }) =>
-                  `rounded-lg px-3 py-2.5 text-base font-semibold ${isActive ? 'bg-brand-50 text-brand-700' : 'text-slate-700'}`
+                  `rounded-lg px-3 py-2.5 text-base font-semibold ${isActive ? 'bg-white/10 text-sky-400' : 'text-slate-200'}`
                 }
               >
                 {v.label}
