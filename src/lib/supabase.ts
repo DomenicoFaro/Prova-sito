@@ -1,7 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+/** Ripulisce il valore delle variabili (spazi, virgolette) e accetta anche il solo "Reference ID". */
+function normalizzaUrl(valore: string | undefined): string | undefined {
+  const v = valore?.trim().replace(/^["']|["']$/g, '').replace(/\/+$/, '')
+  if (!v) return undefined
+  if (/^[a-z0-9]{20}$/.test(v)) return `https://${v}.supabase.co`
+  if (/^[a-z0-9-]+\.supabase\.co$/i.test(v)) return `https://${v}`
+  return /^https?:\/\/[^\s/]+$/i.test(v) ? v : undefined
+}
+
+const url = normalizzaUrl(import.meta.env.VITE_SUPABASE_URL as string | undefined)
+const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim().replace(/^["']|["']$/g, '') || undefined
 
 export const supabaseConfigurato = Boolean(url && anonKey)
 
