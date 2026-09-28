@@ -2,9 +2,9 @@
 
 Il sito ha due parti:
 
-- **Parte pubblica**: home, portfolio con filtri per categoria, pagina di dettaglio di ogni progetto e modulo contatti.
+- **Parte pubblica** (sito privato, non indicizzato): home, portfolio con filtri per categoria e pagina di dettaglio di ogni progetto.
 - **Area riservata**:
-  - **Admin**: gestisce progetti, assegnazioni con le percentuali, pagamenti, collaboratori e richieste di contatto, e può aprire la "vista come" di un collaboratore.
+  - **Admin**: gestisce progetti, assegnazioni con le percentuali, pagamenti e collaboratori, e può aprire la "vista come" di un collaboratore.
   - **Collaboratore**: vede, in sola lettura, solo i propri siti, i propri guadagni e i pagamenti ricevuti.
 
 **Stack**: React, TypeScript, Vite, Tailwind CSS v4, Supabase (Auth, Postgres, Storage, RLS) e Vercel.
@@ -15,9 +15,9 @@ supabase/
   seed.sql                       i due progetti del portfolio e il collaboratore di prova "Diego"
   functions/crea-collaboratore/  Edge Function che crea gli account e invia l'invito
 src/
-  config.ts                      nome agenzia, slogan, contatti  ← PERSONALIZZA QUI
+  config.ts                      titolo e descrizione del sito
   index.css                      palette colori (variabili --color-brand-*)
-  pages/public/                  Home, Portfolio, Dettaglio, Contatti
+  pages/public/                  Home, Portfolio, Dettaglio
   pages/auth/                    Login, Password dimenticata, Imposta password
   pages/area/                    Dashboard collaboratore, Profilo, pagine admin
 ```
