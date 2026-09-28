@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Colore d'accento del brand: cambia questi valori per personalizzare la palette */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+  --color-brand-950: #1e1b4b;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+}
+
+@utility container-sito {
+  @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
+}
+@utility btn-primary {
+  @apply btn bg-brand-600 text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700;
+}
+@utility btn-secondary {
+  @apply btn border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50;
+}
+@utility btn-ghost {
+  @apply btn text-slate-600 hover:bg-slate-100 hover:text-slate-900;
+}
+@utility btn-danger {
+  @apply btn bg-red-600 text-white hover:bg-red-700;
+}
+@utility input {
+  @apply block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500;
+}
+@utility label {
+  @apply mb-1.5 block text-sm font-medium text-slate-700;
+}
+@utility card {
+  @apply rounded-2xl border border-slate-200/80 bg-white shadow-sm;
+}
+@utility table-base {
+  @apply w-full text-left text-sm;
+  & th {
+    @apply bg-slate-50 px-4 py-3 text-xs font-semibold tracking-wide whitespace-nowrap text-slate-500 uppercase;
+  }
+  & td {
+    @apply border-t border-slate-100 px-4 py-3 align-middle;
+  }
+}
+
+/* Animazioni leggere allo scroll */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.visibile {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
