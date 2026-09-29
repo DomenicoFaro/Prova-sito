@@ -122,6 +122,8 @@ export interface Opportunita {
   indirizzo: string
   dettagli: string
   attiva: boolean
+  /** null = creata dall'admin (per tutti); altrimenti link privato di quel collaboratore. */
+  owner_id: string | null
   created_at: string
 }
 
@@ -141,4 +143,12 @@ export interface RichiestaContatto {
   messaggio: string
   stato: StatoRichiesta
   created_at: string
+}
+
+/** Riga della tabella `opportunita_prese`: la presa in carico (12 ore) di un'opportunità. */
+export interface OpportunitaPresa {
+  opportunita_id: string
+  collaboratore_id: string
+  preso_il: string
+  scade_il: string
 }

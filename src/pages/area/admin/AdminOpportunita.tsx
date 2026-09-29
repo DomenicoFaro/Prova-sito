@@ -11,7 +11,7 @@ import {
 } from '../../../components/ui'
 import { formatDataOra } from '../../../lib/format'
 import { messaggioErrore, supabase } from '../../../lib/supabase'
-import type { EsitoOpportunitaRiga, Opportunita, Profilo } from '../../../lib/types'
+import type { EsitoOpportunitaRiga, Opportunita, OpportunitaPresa, Profilo } from '../../../lib/types'
 import { esegui, useQuery } from '../../../lib/useQuery'
 
 interface FormOpportunita {
@@ -34,19 +34,22 @@ export default function AdminOpportunita() {
   const [daEliminare, setDaEliminare] = useState<Opportunita | null>(null)
 
   const { dati, caricamento, errore: erroreCaricamento, ricarica } = useQuery(async () => {
-    const [opportunita, esiti, profili] = await Promise.all([
+    const [opportunita, esiti, profili, prese] = await Promise.all([
       esegui<Opportunita[]>(supabase.from('opportunita').select('*').order('created_at', { ascending: false })),
       esegui<EsitoOpportunitaRiga[]>(supabase.from('opportunita_esiti').select('*').order('updated_at', { ascending: false })),
       esegui<Profilo[]>(supabase.from('profiles').select('*').order('nome')),
+      esegui<OpportunitaPresa[]>(supabase.from('opportunita_prese').select('*').order('preso_il', { ascending: false })),
     ])
-    return { opportunita, esiti, profili }
+    return { opportunita, esiti, profili, prese }
   })
 
   const mappe = useMemo(() => {
     const profili = new Map((dati?.profili ?? []).map((p) => [p.id, p]))
     const esiti = new Map<string, EsitoOpportunitaRiga[]>()
     for (const e of dati?.esiti ?? []) esiti.set(e.opportunita_id, [...(esiti.get(e.opportunita_id) ?? []), e])
-    return { profili, esiti }
+    const prese = new Map<string, OpportunitaPresa[]>()
+    for (const p of dati?.prese ?? []) prese.set(p.opportunita_id, [...(prese.get(p.opportunita_id) ?? []), p])
+    return { profili, esiti, prese }
   }, [dati])
 
   function apri(o?: Opportunita) {
@@ -91,7 +94,7 @@ export default function AdminOpportunita() {
     <>
       <IntestazionePagina
         titolo="Opportunità"
-        sottotitolo="Attività con alta vendibilità da proporre ai collaboratori. Loro vedono il link Maps e i dettagli e segnano Fatto o Non accettato."
+        sottotitolo="Attività con alta vendibilità da proporre ai collaboratori. Qui vedi anche i link che i collaboratori aggiungono da soli (visibili solo a loro)."
         azioni={
           <button className="btn-primary" onClick={() => apri()}>
             <Icon name="plus" className="h-4 w-4" /> Nuova opportunità
@@ -121,6 +124,11 @@ export default function AdminOpportunita() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-slate-900">{o.nome}</p>
+                        {o.owner_id && (
+                          <p className="truncate text-xs font-semibold text-brand-700">
+                            Aggiunta da {mappe.profili.get(o.owner_id)?.nome ?? 'un collaboratore'}
+                          </p>
+                        )}
                         <p className="truncate text-sm text-slate-500">
                           {[o.categoria, o.indirizzo].filter(Boolean).join(' · ') || '—'}
                         </p>
@@ -141,10 +149,23 @@ export default function AdminOpportunita() {
                     </a>
                     <div className="mt-4 border-t border-slate-100 pt-3">
                       <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">Esiti collaboratori</p>
-                      {esiti.length === 0 ? (
+                      {esiti.length === 0 && !(mappe.prese.get(o.id)?.length) ? (
                         <p className="text-sm text-slate-500">Nessun esito ancora.</p>
                       ) : (
                         <ul className="space-y-1.5">
+                          {(mappe.prese.get(o.id) ?? [])
+                            .filter((p) => !esiti.some((e) => e.collaboratore_id === p.collaboratore_id))
+                            .map((p) => {
+                              const inCorso = new Date(p.scade_il).getTime() > Date.now()
+                              return (
+                                <li key={`p-${p.collaboratore_id}`} className="flex items-center justify-between gap-3 text-sm">
+                                  <span className="truncate font-medium text-slate-800">{mappe.profili.get(p.collaboratore_id)?.nome ?? '—'}</span>
+                                  <span className={`shrink-0 text-xs font-semibold ${inCorso ? 'text-brand-700' : 'text-amber-700'}`}>
+                                    {inCorso ? `In carico fino alle ${formatDataOra(p.scade_il)}` : 'Scaduta senza risposta'}
+                                  </span>
+                                </li>
+                              )
+                            })}
                           {esiti.map((e) => (
                             <li key={e.collaboratore_id} className="flex items-center justify-between gap-3 text-sm">
                               <span className="truncate font-medium text-slate-800">{mappe.profili.get(e.collaboratore_id)?.nome ?? '—'}</span>
