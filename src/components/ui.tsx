@@ -1,12 +1,13 @@
 import { useEffect, type ReactNode } from 'react'
 import { Icon, type NomeIcona } from './Icon'
 import {
+  ETICHETTE_ESITO_OPPORTUNITA,
   ETICHETTE_STATO_PAGAMENTO,
   ETICHETTE_STATO_PROGETTO,
   ETICHETTE_STATO_RICHIESTA,
   ETICHETTE_STATO_VENDITA,
 } from '../lib/format'
-import type { StatoPagamento, StatoProgetto, StatoRichiesta, StatoVendita } from '../lib/types'
+import type { EsitoOpportunita, StatoPagamento, StatoProgetto, StatoRichiesta, StatoVendita } from '../lib/types'
 
 export function Spinner({ className = 'h-5 w-5' }: { className?: string }) {
   return (
@@ -140,6 +141,15 @@ export function BadgeStatoVendita({ stato }: { stato: StatoVendita }) {
     rifiutata: 'bg-red-50 text-red-700',
   }[stato]
   return <Pill className={c}>{ETICHETTE_STATO_VENDITA[stato]}</Pill>
+}
+
+export function BadgeEsitoOpportunita({ esito }: { esito: EsitoOpportunita | null }) {
+  if (!esito) return <Pill className="bg-slate-100 text-slate-600">Da fare</Pill>
+  const c = {
+    fatto: 'bg-emerald-50 text-emerald-700',
+    non_accettato: 'bg-red-50 text-red-700',
+  }[esito]
+  return <Pill className={c}>{ETICHETTE_ESITO_OPPORTUNITA[esito]}</Pill>
 }
 
 export function IntestazionePagina({

@@ -3,6 +3,7 @@ export type StatoProgetto = 'in_lavorazione' | 'consegnato' | 'manutenzione'
 export type StatoPagamento = 'pagato' | 'parziale' | 'da_pagare'
 export type StatoRichiesta = 'nuova' | 'letta' | 'gestita'
 export type StatoVendita = 'in_attesa' | 'approvata' | 'rifiutata'
+export type EsitoOpportunita = 'fatto' | 'non_accettato'
 
 export interface Profilo {
   id: string
@@ -110,6 +111,26 @@ export interface Vendita {
   stato: StatoVendita
   progetto_id: string | null
   created_at: string
+}
+
+/** Riga della tabella `opportunita` (supabase/opportunita.sql). */
+export interface Opportunita {
+  id: string
+  nome: string
+  maps_url: string
+  categoria: string
+  indirizzo: string
+  dettagli: string
+  attiva: boolean
+  created_at: string
+}
+
+/** Riga della tabella `opportunita_esiti`: l'esito di un collaboratore su un'opportunità. */
+export interface EsitoOpportunitaRiga {
+  opportunita_id: string
+  collaboratore_id: string
+  esito: EsitoOpportunita
+  updated_at: string
 }
 
 export interface RichiestaContatto {

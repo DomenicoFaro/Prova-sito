@@ -18,6 +18,7 @@ const Dashboard = lazy(() => import('./pages/area/collaboratore/Dashboard'))
 const DettaglioAssegnazione = lazy(() => import('./pages/area/collaboratore/DettaglioAssegnazione'))
 const Vendite = lazy(() => import('./pages/area/collaboratore/Vendite'))
 const NuovaVendita = lazy(() => import('./pages/area/collaboratore/NuovaVendita'))
+const Opportunita = lazy(() => import('./pages/area/collaboratore/Opportunita'))
 const Profilo = lazy(() => import('./pages/area/Profilo'))
 const AdminRiepilogo = lazy(() => import('./pages/area/admin/AdminRiepilogo'))
 const AdminProgetti = lazy(() => import('./pages/area/admin/AdminProgetti'))
@@ -25,6 +26,7 @@ const AdminProgettoForm = lazy(() => import('./pages/area/admin/AdminProgettoFor
 const AdminPagamenti = lazy(() => import('./pages/area/admin/AdminPagamenti'))
 const AdminCollaboratori = lazy(() => import('./pages/area/admin/AdminCollaboratori'))
 const AdminVendite = lazy(() => import('./pages/area/admin/AdminVendite'))
+const AdminOpportunita = lazy(() => import('./pages/area/admin/AdminOpportunita'))
 const AdminVistaCome = lazy(() => import('./pages/area/admin/AdminVistaCome'))
 const AdminVistaComeDettaglio = lazy(() =>
   import('./pages/area/admin/AdminVistaCome').then((m) => ({ default: m.AdminVistaComeDettaglio })),
@@ -54,6 +56,7 @@ export default function App() {
                 <Route path="dashboard/:assegnazioneId" element={<DettaglioAssegnazione />} />
                 <Route path="vendite" element={<Vendite />} />
                 <Route path="vendite/nuova" element={<NuovaVendita />} />
+                <Route path="opportunita" element={<Opportunita />} />
                 <Route path="profilo" element={<Profilo />} />
 
                 <Route path="admin" element={<RichiedeAdmin />}>
@@ -63,6 +66,7 @@ export default function App() {
                   <Route path="progetti/:id" element={<AdminProgettoForm />} />
                   <Route path="pagamenti" element={<AdminPagamenti />} />
                   <Route path="vendite" element={<AdminVendite />} />
+                  <Route path="opportunita" element={<AdminOpportunita />} />
                   <Route path="collaboratori" element={<AdminCollaboratori />} />
                   <Route path="collaboratori/:id" element={<AdminVistaCome />} />
                   <Route path="collaboratori/:id/progetti/:assegnazioneId" element={<AdminVistaComeDettaglio />} />

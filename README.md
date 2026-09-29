@@ -36,6 +36,10 @@ src/
    Lo script crea tabelle, view, trigger, la funzione `is_admin()`, tutte le policy RLS e i bucket Storage `screenshots` e `avatars`. Si può rieseguire senza problemi.
 3. Apri una nuova query, incolla [`supabase/seed.sql`](supabase/seed.sql) e premi **Run**. Inserisce i due progetti del portfolio: Café Sauvage e Barbiere (demo).
 
+### 2b. Opportunità (attività con alta vendibilità)
+Apri una nuova query, incolla [`supabase/opportunita.sql`](supabase/opportunita.sql) e premi **Run**.
+L'admin gestisce le attività da **Area riservata → Opportunità** (link Google Maps + dettagli, modifica, nascondi, elimina) e vede l'esito di ogni collaboratore. I collaboratori le vedono in sola lettura e premono **Fatto** o **Non accettato** (premendo di nuovo lo stesso tasto l'esito si annulla).
+
 ### 3. Configura l'autenticazione
 In **Authentication → Sign In / Providers**:
 - **Disattiva "Allow new users to sign up"**. Gli account li crea solo l'admin, e il database comunque assegna sempre il ruolo `collaboratore` ai nuovi utenti.

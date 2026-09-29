@@ -17,6 +17,7 @@ const VOCI_ADMIN: Voce[] = [
   { to: '/area/admin', label: 'Riepilogo', icona: 'chart', end: true },
   { to: '/area/admin/progetti', label: 'Progetti', icona: 'folder' },
   { to: '/area/admin/vendite', label: 'Vendite', icona: 'handshake' },
+  { to: '/area/admin/opportunita', label: 'Opportunità', icona: 'pin' },
   { to: '/area/admin/pagamenti', label: 'Pagamenti', icona: 'wallet' },
   { to: '/area/admin/collaboratori', label: 'Collaboratori', icona: 'users' },
 ]
@@ -24,6 +25,7 @@ const VOCI_ADMIN: Voce[] = [
 const VOCI_COLLABORATORE: Voce[] = [
   { to: '/area/dashboard', label: 'I miei siti', icona: 'chart' },
   { to: '/area/vendite', label: 'Vendite', icona: 'handshake' },
+  { to: '/area/opportunita', label: 'Opportunità', icona: 'pin' },
 ]
 
 export function AreaLayout() {

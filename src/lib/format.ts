@@ -1,4 +1,4 @@
-import type { StatoPagamento, StatoProgetto, StatoRichiesta, StatoVendita } from './types'
+import type { EsitoOpportunita, StatoPagamento, StatoProgetto, StatoRichiesta, StatoVendita } from './types'
 
 const euro = new Intl.NumberFormat('it-IT', {
   style: 'currency',
@@ -67,6 +67,11 @@ export const ETICHETTE_STATO_VENDITA: Record<StatoVendita, string> = {
   in_attesa: 'In attesa',
   approvata: 'Approvata',
   rifiutata: 'Rifiutata',
+}
+
+export const ETICHETTE_ESITO_OPPORTUNITA: Record<EsitoOpportunita, string> = {
+  fatto: 'Fatto',
+  non_accettato: 'Non accettato',
 }
 
 export const TIPI_SITO = ['Sito vetrina', 'E-commerce', 'Web app', 'Prenotazioni online', 'Restyling', 'Altro'] as const
