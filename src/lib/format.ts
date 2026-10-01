@@ -70,8 +70,9 @@ export const ETICHETTE_STATO_VENDITA: Record<StatoVendita, string> = {
 }
 
 export const ETICHETTE_ESITO_OPPORTUNITA: Record<EsitoOpportunita, string> = {
-  fatto: 'Fatto',
-  non_accettato: 'Non accettato',
+  venduto: 'Venduto',
+  interessato: 'Interessato',
+  non_interessato: 'Non interessato',
 }
 
 export const TIPI_SITO = ['Sito vetrina', 'E-commerce', 'Web app', 'Prenotazioni online', 'Restyling', 'Altro'] as const

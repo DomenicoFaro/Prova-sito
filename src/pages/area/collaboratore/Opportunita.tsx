@@ -225,20 +225,28 @@ export default function Opportunita() {
                     {puoRispondere && (
                       <>
                     <button
-                      className={`btn-secondary py-1.5 ${esito === 'fatto' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : ''}`}
+                      className={`btn-secondary py-1.5 ${esito === 'venduto' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : ''}`}
                       disabled={occupato}
-                      aria-pressed={esito === 'fatto'}
-                      onClick={() => segna(o, 'fatto')}
+                      aria-pressed={esito === 'venduto'}
+                      onClick={() => segna(o, 'venduto')}
                     >
-                      {occupato ? <Spinner className="h-4 w-4" /> : <Icon name="check" className="h-4 w-4" />} Fatto
+                      {occupato ? <Spinner className="h-4 w-4" /> : <Icon name="check" className="h-4 w-4" />} Venduto
                     </button>
                     <button
-                      className={`btn-secondary py-1.5 ${esito === 'non_accettato' ? 'border-red-300 bg-red-50 text-red-700' : ''}`}
+                      className={`btn-secondary py-1.5 ${esito === 'interessato' ? 'border-amber-300 bg-amber-50 text-amber-700' : ''}`}
                       disabled={occupato}
-                      aria-pressed={esito === 'non_accettato'}
-                      onClick={() => segna(o, 'non_accettato')}
+                      aria-pressed={esito === 'interessato'}
+                      onClick={() => segna(o, 'interessato')}
                     >
-                      <Icon name="ban" className="h-4 w-4" /> Non accettato
+                      {occupato ? <Spinner className="h-4 w-4" /> : <Icon name="handshake" className="h-4 w-4" />} Interessato
+                    </button>
+                    <button
+                      className={`btn-secondary py-1.5 ${esito === 'non_interessato' ? 'border-red-300 bg-red-50 text-red-700' : ''}`}
+                      disabled={occupato}
+                      aria-pressed={esito === 'non_interessato'}
+                      onClick={() => segna(o, 'non_interessato')}
+                    >
+                      {occupato ? <Spinner className="h-4 w-4" /> : <Icon name="ban" className="h-4 w-4" />} Non interessato
                     </button>
                       </>
                     )}

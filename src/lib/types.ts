@@ -3,7 +3,7 @@ export type StatoProgetto = 'in_lavorazione' | 'consegnato' | 'manutenzione'
 export type StatoPagamento = 'pagato' | 'parziale' | 'da_pagare'
 export type StatoRichiesta = 'nuova' | 'letta' | 'gestita'
 export type StatoVendita = 'in_attesa' | 'approvata' | 'rifiutata'
-export type EsitoOpportunita = 'fatto' | 'non_accettato'
+export type EsitoOpportunita = 'venduto' | 'interessato' | 'non_interessato'
 
 export interface Profilo {
   id: string

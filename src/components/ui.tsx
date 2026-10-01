@@ -146,8 +146,9 @@ export function BadgeStatoVendita({ stato }: { stato: StatoVendita }) {
 export function BadgeEsitoOpportunita({ esito }: { esito: EsitoOpportunita | null }) {
   if (!esito) return <Pill className="bg-slate-100 text-slate-600">Da fare</Pill>
   const c = {
-    fatto: 'bg-emerald-50 text-emerald-700',
-    non_accettato: 'bg-red-50 text-red-700',
+    venduto: 'bg-emerald-50 text-emerald-700',
+    interessato: 'bg-amber-50 text-amber-700',
+    non_interessato: 'bg-red-50 text-red-700',
   }[esito]
   return <Pill className={c}>{ETICHETTE_ESITO_OPPORTUNITA[esito]}</Pill>
 }

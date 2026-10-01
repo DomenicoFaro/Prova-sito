@@ -5,17 +5,13 @@
 -- * Ogni collaboratore può aggiungere i PROPRI link (owner_id = suo id):
 --   li vede solo lui, e l'admin vede tutto.
 -- * Opportunità dell'admin: un collaboratore ne "prende in carico" UNA alla
---   volta e ha 12 ore per rispondere "fatto" o "non accettato". Finché è in
+--   volta e ha 12 ore per rispondere "venduto", "interessato" o "non interessato". Finché è in
 --   carico gli altri non la vedono. Se scadono le 12 ore senza risposta torna
 --   visibile a tutti e chi l'aveva preso non può più riprenderla.
 --
 -- Esegui DOPO schema.sql: SQL Editor → New query → incolla → Run.
 -- Si può rieseguire senza problemi.
 -- =============================================================================
-
-do $$ begin
-  create type public.esito_opportunita as enum ('fatto', 'non_accettato');
-exception when duplicate_object then null; end $$;
 
 create table if not exists public.opportunita (
   id          uuid primary key default gen_random_uuid(),
@@ -35,13 +31,22 @@ alter table public.opportunita
 create table if not exists public.opportunita_esiti (
   opportunita_id    uuid not null references public.opportunita (id) on delete cascade,
   collaboratore_id  uuid not null default auth.uid() references public.profiles (id) on delete cascade,
-  esito             public.esito_opportunita not null,
+  esito             text not null,
   updated_at        timestamptz not null default now(),
   primary key (opportunita_id, collaboratore_id)
 );
 
 -- Prese in carico. La riga resta anche dopo la scadenza: la chiave primaria
 -- impedisce a chi l'ha lasciata scadere di riprenderla.
+-- Migrazione dal vecchio tipo (fatto / non_accettato) a venduto / interessato / non_interessato
+alter table public.opportunita_esiti alter column esito type text using esito::text;
+alter table public.opportunita_esiti drop constraint if exists opportunita_esiti_esito_check;
+update public.opportunita_esiti set esito = 'venduto'         where esito = 'fatto';
+update public.opportunita_esiti set esito = 'non_interessato' where esito = 'non_accettato';
+alter table public.opportunita_esiti
+  add constraint opportunita_esiti_esito_check check (esito in ('venduto', 'interessato', 'non_interessato'));
+drop type if exists public.esito_opportunita;
+
 create table if not exists public.opportunita_prese (
   opportunita_id    uuid not null references public.opportunita (id) on delete cascade,
   collaboratore_id  uuid not null references public.profiles (id) on delete cascade,
