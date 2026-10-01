@@ -32,6 +32,8 @@ export default function AdminOpportunita() {
   const [salvataggio, setSalvataggio] = useState(false)
   const [errore, setErrore] = useState<string | null>(null)
   const [daEliminare, setDaEliminare] = useState<Opportunita | null>(null)
+  const [eliminaTutte, setEliminaTutte] = useState(false)
+  const [eliminazione, setEliminazione] = useState(false)
 
   const { dati, caricamento, errore: erroreCaricamento, ricarica } = useQuery(async () => {
     const [opportunita, esiti, profili, prese] = await Promise.all([
@@ -90,15 +92,34 @@ export default function AdminOpportunita() {
     ricarica()
   }
 
+  /** Elimina tutte le opportunità create dall'admin; i link privati dei collaboratori restano. */
+  async function eliminaTutteLe() {
+    setEliminazione(true)
+    const { error } = await supabase.from('opportunita').delete().is('owner_id', null)
+    setEliminazione(false)
+    setEliminaTutte(false)
+    if (error) return setErrore(messaggioErrore(error))
+    ricarica()
+  }
+
+  const numeroCondivise = dati?.opportunita.filter((o) => !o.owner_id).length ?? 0
+
   return (
     <>
       <IntestazionePagina
         titolo="Opportunità"
         sottotitolo="Attività con alta vendibilità da proporre ai collaboratori. Qui vedi anche i link che i collaboratori aggiungono da soli (visibili solo a loro)."
         azioni={
-          <button className="btn-primary" onClick={() => apri()}>
-            <Icon name="plus" className="h-4 w-4" /> Nuova opportunità
-          </button>
+          <>
+            {numeroCondivise > 0 && (
+              <button className="btn-secondary text-red-600" onClick={() => setEliminaTutte(true)}>
+                <Icon name="trash" className="h-4 w-4" /> Elimina tutte
+              </button>
+            )}
+            <button className="btn-primary" onClick={() => apri()}>
+              <Icon name="plus" className="h-4 w-4" /> Nuova opportunità
+            </button>
+          </>
         }
       />
 
@@ -229,6 +250,19 @@ export default function AdminOpportunita() {
             </button>
           </div>
         </form>
+      </Modale>
+
+      <Modale aperta={eliminaTutte} titolo="Eliminare tutte le opportunità?" onChiudi={() => setEliminaTutte(false)}>
+        <p className="text-sm text-slate-600">
+          Verranno eliminate <strong>{numeroCondivise}</strong> opportunità create da te, insieme a esiti e prese in carico dei collaboratori.
+          I link personali aggiunti dai collaboratori non vengono toccati. L'operazione non si può annullare.
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <button className="btn-secondary" onClick={() => setEliminaTutte(false)}>Annulla</button>
+          <button className="btn-danger" disabled={eliminazione} onClick={eliminaTutteLe}>
+            {eliminazione && <Spinner className="h-4 w-4" />} Elimina tutte
+          </button>
+        </div>
       </Modale>
 
       <Modale aperta={!!daEliminare} titolo="Eliminare l'opportunità?" onChiudi={() => setDaEliminare(null)}>
