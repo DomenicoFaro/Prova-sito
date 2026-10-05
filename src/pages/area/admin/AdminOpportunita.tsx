@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useAuth } from '../../../auth/AuthProvider'
 import { Icon } from '../../../components/Icon'
 import { BarraSezione, GrigliaSezioni } from '../../../components/SezioniOpportunita'
 import {
@@ -24,12 +25,17 @@ interface FormOpportunita {
   indirizzo: string
   dettagli: string
   attiva: boolean
+  /** Team destinatario ('' = il mio team) */
+  team_id: string
 }
 
-const FORM_VUOTO: FormOpportunita = { nome: '', maps_url: '', categoria: '', indirizzo: '', dettagli: '', attiva: true }
+const FORM_VUOTO: FormOpportunita = { nome: '', maps_url: '', categoria: '', indirizzo: '', dettagli: '', attiva: true, team_id: '' }
 
 export default function AdminOpportunita() {
+  const { profilo } = useAuth()
   const [params, setParams] = useSearchParams()
+  // Filtro per team: 'tutti' | '' (il mio team) | id del socio
+  const [teamFiltro, setTeamFiltro] = useState<string>('tutti')
   const sezione = params.get('sezione')
   const [modale, setModale] = useState(false)
   const [inModifica, setInModifica] = useState<Opportunita | null>(null)
@@ -60,14 +66,21 @@ export default function AdminOpportunita() {
   }, [dati])
 
   // Categorie (opportunità condivise) + una cartella per ogni collaboratore con i suoi link
+  const soci = useMemo(() => (dati?.profili ?? []).filter((p) => p.ruolo === 'socio'), [dati])
+  const meId = profilo?.id ?? ''
+  // Il filtro per team vale per le opportunità condivise; i link dei collaboratori restano nelle loro cartelle
+  const elenco = useMemo(
+    () => (dati?.opportunita ?? []).filter((o) => o.owner_id || teamFiltro === 'tutti' || (o.team_id ?? '') === teamFiltro),
+    [dati, teamFiltro],
+  )
   const sezioni = useMemo(
-    () => costruisciSezioni(dati?.opportunita ?? [], { meId: '', mie: false, persone: mappe.profili }),
-    [dati, mappe.profili],
+    () => costruisciSezioni(elenco, { meId, mie: true, persone: mappe.profili }),
+    [elenco, meId, mappe.profili],
   )
   const sezioneCorrente = sezioni.find((x) => x.chiave === sezione) ?? null
   const visibili = useMemo(
-    () => (sezioneCorrente ? filtraPerSezione(dati?.opportunita ?? [], sezioneCorrente.chiave, '') : []),
-    [dati, sezioneCorrente],
+    () => (sezioneCorrente ? filtraPerSezione(elenco, sezioneCorrente.chiave, meId) : []),
+    [elenco, sezioneCorrente, meId],
   )
   const categorieNote = useMemo(
     () => Array.from(new Set((dati?.opportunita ?? []).map((o) => o.categoria.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'it')),
@@ -86,7 +99,7 @@ export default function AdminOpportunita() {
     setInModifica(o ?? null)
     // Dentro una categoria, la nuova opportunità parte già in quella categoria
     const categoriaCorrente = sezioneCorrente?.chiave.startsWith('cat:') ? sezioneCorrente.titolo : ''
-    setForm(o ? { nome: o.nome, maps_url: o.maps_url, categoria: o.categoria, indirizzo: o.indirizzo, dettagli: o.dettagli, attiva: o.attiva } : { ...FORM_VUOTO, categoria: categoriaCorrente })
+    setForm(o ? { nome: o.nome, maps_url: o.maps_url, categoria: o.categoria, indirizzo: o.indirizzo, dettagli: o.dettagli, attiva: o.attiva, team_id: o.team_id ?? '' } : { ...FORM_VUOTO, categoria: categoriaCorrente, team_id: teamFiltro === 'tutti' ? '' : teamFiltro })
     setModale(true)
   }
 
@@ -100,6 +113,8 @@ export default function AdminOpportunita() {
       indirizzo: form.indirizzo.trim(),
       dettagli: form.dettagli.trim(),
       attiva: form.attiva,
+      // Opportunità condivisa: a quale team è destinata (null = il mio)
+      ...(inModifica?.owner_id ? {} : { team_id: form.team_id || null }),
     }
     if (!valori.nome) return setErrore("Inserisci il nome dell'attività.")
     if (!/^https?:\/\//i.test(valori.maps_url)) return setErrore('Inserisci un link Google Maps valido (deve iniziare con https://).')
@@ -124,20 +139,20 @@ export default function AdminOpportunita() {
   /** Elimina tutte le opportunità create dall'admin; i link privati dei collaboratori restano. */
   async function eliminaTutteLe() {
     setEliminazione(true)
-    const { error } = await supabase.from('opportunita').delete().is('owner_id', null)
+    const { error } = await supabase.from('opportunita').delete().is('owner_id', null).is('team_id', null)
     setEliminazione(false)
     setEliminaTutte(false)
     if (error) return setErrore(messaggioErrore(error))
     ricarica()
   }
 
-  const numeroCondivise = dati?.opportunita.filter((o) => !o.owner_id).length ?? 0
+  const numeroCondivise = dati?.opportunita.filter((o) => !o.owner_id && !o.team_id).length ?? 0
 
   return (
     <>
       <IntestazionePagina
         titolo="Opportunità"
-        sottotitolo="Le categorie con le attività da proporre ai collaboratori, e una cartella per ogni collaboratore con i link che ha caricato lui."
+        sottotitolo="Le categorie con i posti di ogni team (il tuo e quello dei soci), «Le mie opportunità» e una cartella per ogni collaboratore con i link che ha caricato lui."
         azioni={
           <>
             {numeroCondivise > 0 && (
@@ -161,6 +176,20 @@ export default function AdminOpportunita() {
           {errore && !modale && <MessaggioErrore>{errore}</MessaggioErrore>}
           {!sezioneCorrente ? (
             <>
+              {soci.length > 0 && (
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Filtra per team">
+                  {[{ id: 'tutti', nome: 'Tutti i team' }, { id: '', nome: 'Il mio team' }, ...soci.map((x) => ({ id: x.id, nome: `Team di ${x.nome}` }))].map((t) => (
+                    <button
+                      key={t.id || 'mio'}
+                      onClick={() => setTeamFiltro(t.id)}
+                      aria-pressed={teamFiltro === t.id}
+                      className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${teamFiltro === t.id ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'}`}
+                    >
+                      {t.nome}
+                    </button>
+                  ))}
+                </div>
+              )}
               {!dati?.opportunita.length && (
                 <p className="text-sm text-slate-500">
                   Nessuna opportunità: premi <strong>Nuova opportunità</strong> e incolla il link Google Maps dell'attività.
@@ -184,10 +213,16 @@ export default function AdminOpportunita() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-slate-900">{o.nome}</p>
-                        {o.owner_id && (
+                        {o.owner_id ? (
                           <p className="truncate text-xs font-semibold text-brand-700">
                             Aggiunta da {mappe.profili.get(o.owner_id)?.nome ?? 'un collaboratore'}
                           </p>
+                        ) : (
+                          soci.length > 0 && (
+                            <p className="truncate text-xs font-semibold text-brand-700">
+                              {o.team_id ? `Team di ${mappe.profili.get(o.team_id)?.nome ?? 'un socio'}` : 'Il mio team'}
+                            </p>
+                          )
                         )}
                         <p className="truncate text-sm text-slate-500">
                           {[o.categoria, o.indirizzo].filter(Boolean).join(' · ') || '—'}
@@ -282,9 +317,19 @@ export default function AdminOpportunita() {
               onChange={(e) => setForm((f) => ({ ...f, dettagli: e.target.value }))}
             />
           </div>
+          {soci.length > 0 && !inModifica?.owner_id && (
+            <div>
+              <label className="label" htmlFor="ot">Team</label>
+              <select id="ot" className="input" value={form.team_id} onChange={(e) => setForm((f) => ({ ...f, team_id: e.target.value }))}>
+                <option value="">Il mio team</option>
+                {soci.map((x) => <option key={x.id} value={x.id}>Team di {x.nome}</option>)}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">Solo i collaboratori di questo team la vedranno nella categoria.</p>
+            </div>
+          )}
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" checked={form.attiva} onChange={(e) => setForm((f) => ({ ...f, attiva: e.target.checked }))} />
-            Visibile ai collaboratori
+            Visibile ai collaboratori del team
           </label>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setModale(false)}>Annulla</button>
@@ -297,7 +342,7 @@ export default function AdminOpportunita() {
 
       <Modale aperta={eliminaTutte} titolo="Eliminare tutte le opportunità?" onChiudi={() => setEliminaTutte(false)}>
         <p className="text-sm text-slate-600">
-          Verranno eliminate <strong>{numeroCondivise}</strong> opportunità create da te, insieme a esiti e prese in carico dei collaboratori.
+          Verranno eliminate <strong>{numeroCondivise}</strong> opportunità del tuo team (quelle dei team dei soci non vengono toccate), insieme a esiti e prese in carico dei collaboratori.
           I link personali aggiunti dai collaboratori non vengono toccati. L'operazione non si può annullare.
         </p>
         <div className="mt-6 flex justify-end gap-2">

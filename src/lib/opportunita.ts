@@ -23,8 +23,8 @@ function maiuscola(t: string) {
 
 /**
  * Raggruppa le opportunità in sezioni:
- *  - una per categoria, con le opportunità condivise (create dall'admin);
- *  - "Le mie opportunità": i link caricati da me (se `mie`);
+ *  - una per categoria, con le opportunità condivise del team (create da admin o socio);
+ *  - "Le mie opportunità": quelle caricate da me (se `mie`);
  *  - una per persona (solo admin/socio): i link caricati da ciascun collaboratore del suo team.
  */
 export function costruisciSezioni(
@@ -37,8 +37,8 @@ export function costruisciSezioni(
     sezioni.push({
       chiave: CHIAVE_MIE,
       titolo: 'Le mie opportunità',
-      sottotitolo: 'I link che hai caricato tu',
-      conteggio: lista.filter((o) => o.owner_id === opzioni.meId).length,
+      sottotitolo: 'Quelle che hai caricato tu',
+      conteggio: lista.filter((o) => o.creato_da === opzioni.meId).length,
       icona: 'user',
     })
   }
@@ -78,7 +78,7 @@ export function costruisciSezioni(
 }
 
 export function filtraPerSezione(lista: Opportunita[], chiave: string, meId: string): Opportunita[] {
-  if (chiave === CHIAVE_MIE) return lista.filter((o) => o.owner_id === meId)
+  if (chiave === CHIAVE_MIE) return lista.filter((o) => o.creato_da === meId)
   if (chiave.startsWith('p:')) return lista.filter((o) => o.owner_id === chiave.slice(2))
   if (chiave.startsWith('cat:')) {
     const k = chiave.slice(4)

@@ -34,7 +34,7 @@ function tempoRimasto(scadenza: string, adesso: number): string {
 const FORM_VUOTO: FormLink = { nome: '', maps_url: '', categoria: '', indirizzo: '', dettagli: '' }
 
 export default function Opportunita() {
-  const { profilo, isGestore } = useAuth()
+  const { profilo, isGestore, isSocio } = useAuth()
   const [params, setParams] = useSearchParams()
   const sezione = params.get('sezione')
   const [inCorso, setInCorso] = useState<string | null>(null)
@@ -147,7 +147,11 @@ export default function Opportunita() {
     setSalvataggio(true)
     const { error } = inModifica
       ? await supabase.from('opportunita').update(valori).eq('id', inModifica.id)
-      : await supabase.from('opportunita').insert({ ...valori, owner_id: profilo.id })
+      : await supabase
+          .from('opportunita')
+          // Il socio aggiunge posti per il proprio team (compaiono nelle categorie dei suoi collaboratori);
+          // un collaboratore aggiunge link propri.
+          .insert(isSocio ? { ...valori, owner_id: null, team_id: profilo.id } : { ...valori, owner_id: profilo.id })
     setSalvataggio(false)
     if (error) return setErroreForm(messaggioErrore(error))
     setModale(false)
@@ -184,12 +188,12 @@ export default function Opportunita() {
         titolo="Opportunità"
         sottotitolo={
           isGestore
-            ? "Scegli una categoria per vedere le attività, oppure apri i link caricati dai collaboratori del tuo team."
+            ? "Le categorie con i posti che hai aggiunto al tuo team, e una cartella per ogni collaboratore con i link che ha caricato lui. In «Le mie opportunità» trovi quelle caricate da te."
             : "Scegli una categoria, aprile su Google Maps e segna com'è andata. Prendi in carico un'opportunità alla volta: hai 12 ore per rispondere, poi torna disponibile per gli altri. I link che aggiungi tu li trovi in «Le mie opportunità»."
         }
         azioni={
           <button className="btn-primary" onClick={() => apri()}>
-            <Icon name="plus" className="h-4 w-4" /> Aggiungi link
+            <Icon name="plus" className="h-4 w-4" /> {isSocio ? 'Aggiungi al team' : 'Aggiungi link'}
           </button>
         }
       />
@@ -221,6 +225,9 @@ export default function Opportunita() {
           <ul className="grid gap-4 lg:grid-cols-2">
             {visibili.map((o) => {
               const mio = o.owner_id === profilo?.id
+              // Il socio modifica i posti condivisi con il suo team; il collaboratore solo i propri link
+              const modificabile = mio || (isSocio && !o.owner_id && o.team_id === profilo?.id)
+              const esitiCollab = isGestore && !o.owner_id ? (dati?.esiti ?? []).filter((e) => e.opportunita_id === o.id) : []
               const delTeam = !!o.owner_id && !mio
               const esitoTeam = delTeam ? (esitiTeam.get(`${o.id}:${o.owner_id}`) ?? null) : null
               const esito = esiti.get(o.id) ?? null
@@ -239,9 +246,9 @@ export default function Opportunita() {
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      {mio && (
+                      {modificabile && (
                         <>
-                          <span className="mr-1 text-xs font-semibold text-brand-700">Tuo</span>
+                          <span className="mr-1 text-xs font-semibold text-brand-700">{mio ? 'Tuo' : 'Del team'}</span>
                           <button className="btn-ghost p-2" onClick={() => apri(o)} aria-label="Modifica link">
                             <Icon name="edit" className="h-4 w-4" />
                           </button>
@@ -271,7 +278,7 @@ export default function Opportunita() {
                     <a href={o.maps_url} target="_blank" rel="noopener noreferrer" className="btn-secondary py-1.5">
                       <Icon name="pin" className="h-4 w-4" /> Google Maps
                     </a>
-                    {!o.owner_id && !presa && (
+                    {!o.owner_id && !presa && !isGestore && (
                       <button
                         className="btn-primary py-1.5"
                         disabled={occupato || !!inCaricoOra}
@@ -310,6 +317,16 @@ export default function Opportunita() {
                       </>
                     )}
                   </div>
+                  {esitiCollab.length > 0 && (
+                    <ul className="mt-4 space-y-1.5 border-t border-slate-100 pt-3">
+                      {esitiCollab.map((e) => (
+                        <li key={e.collaboratore_id} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="truncate font-medium text-slate-800">{dati?.persone.get(e.collaboratore_id)?.nome ?? '—'}</span>
+                          <BadgeEsitoOpportunita esito={e.esito} />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               )
             })}
@@ -317,7 +334,7 @@ export default function Opportunita() {
         </div>
       )}
 
-      <Modale aperta={modale} titolo={inModifica ? 'Modifica link' : 'Aggiungi un tuo link'} onChiudi={() => setModale(false)}>
+      <Modale aperta={modale} titolo={inModifica ? 'Modifica' : isSocio ? 'Aggiungi un posto al tuo team' : 'Aggiungi un tuo link'} onChiudi={() => setModale(false)}>
         <form onSubmit={salva} className="space-y-4">
           {erroreForm && <MessaggioErrore>{erroreForm}</MessaggioErrore>}
           <div>
@@ -345,7 +362,11 @@ export default function Opportunita() {
             <label className="label" htmlFor="cd">Dettagli</label>
             <textarea id="cd" rows={4} className="input" value={form.dettagli} onChange={(e) => setForm((f) => ({ ...f, dettagli: e.target.value }))} />
           </div>
-          <p className="text-xs text-slate-500">Questo link lo vedi solo tu (e chi gestisce il tuo team).</p>
+          <p className="text-xs text-slate-500">
+            {isSocio
+              ? 'Lo vedranno tutti i collaboratori del tuo team, nella categoria che scegli.'
+              : 'Questo link lo vedi solo tu (e chi gestisce il tuo team).'}
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setModale(false)}>Annulla</button>
             <button type="submit" className="btn-primary" disabled={salvataggio}>

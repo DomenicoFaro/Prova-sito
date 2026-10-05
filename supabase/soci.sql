@@ -334,6 +334,119 @@ create policy "prese: socio legge il suo team"
   using (public.is_socio() and public.gestisce(collaboratore_id));
 
 -- -----------------------------------------------------------------------------
+-- Opportunità per TEAM: i posti che aggiungi tu li vede solo il tuo team; quelli
+-- di Diego solo il suo. Ognuno ha poi «Le mie opportunità» (creato_da = io).
+--   team_id    → di chi è il team a cui è destinata un'opportunità condivisa
+--                (null = team dell'admin)
+--   creato_da  → chi l'ha caricata
+-- -----------------------------------------------------------------------------
+alter table public.opportunita add column if not exists team_id   uuid references public.profiles (id) on delete set null;
+alter table public.opportunita add column if not exists creato_da uuid references public.profiles (id) on delete set null default auth.uid();
+
+-- Dati già presenti: i link privati sono del collaboratore, quelli condivisi dell'admin
+update public.opportunita
+   set creato_da = coalesce(owner_id, (select id from public.profiles where ruolo::text = 'admin' order by created_at limit 1))
+ where creato_da is null;
+
+create index if not exists opportunita_team_idx on public.opportunita (team_id);
+
+-- Il team a cui appartiene l'utente corrente (null = team dell'admin)
+create or replace function public.mio_team()
+returns uuid
+language sql stable security definer set search_path = public
+as $$
+  select responsabile_id from public.profiles where id = auth.uid();
+$$;
+
+revoke all on function public.mio_team() from public, anon;
+grant execute on function public.mio_team() to authenticated;
+
+-- Un collaboratore vede solo le opportunità condivise del PROPRIO team
+drop policy if exists "opportunita: utenti attivi leggono"      on public.opportunita;
+drop policy if exists "opportunita: socio gestisce il suo team" on public.opportunita;
+
+create policy "opportunita: utenti attivi leggono"
+  on public.opportunita for select to authenticated
+  using (
+    public.is_attivo()
+    and (
+      owner_id = auth.uid()
+      or (
+        owner_id is null and attiva
+        and not public.is_socio()
+        and team_id is not distinct from public.mio_team()
+        and (
+          exists (select 1 from public.opportunita_prese p
+                  where p.opportunita_id = opportunita.id and p.collaboratore_id = auth.uid())
+          or not public.opportunita_occupata_da_altri(opportunita.id)
+        )
+      )
+    )
+  );
+
+-- Il socio crea, modifica ed elimina le opportunità condivise del suo team
+create policy "opportunita: socio gestisce il suo team"
+  on public.opportunita for all to authenticated
+  using (public.is_socio() and owner_id is null and team_id = auth.uid())
+  with check (public.is_socio() and owner_id is null and team_id = auth.uid());
+
+-- Prendere in carico è possibile solo per le opportunità del proprio team
+create or replace function public.prendi_in_carico(p_opp uuid)
+returns timestamptz
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  me  uuid := auth.uid();
+  scad timestamptz;
+begin
+  if me is null or not public.is_attivo() then
+    raise exception 'Non hai i permessi per eseguire questa operazione.';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('prese:' || me::text));
+  perform pg_advisory_xact_lock(hashtext('prese:' || p_opp::text));
+
+  if not exists (
+    select 1 from public.opportunita o
+    where o.id = p_opp and o.attiva and o.owner_id is null
+      and o.team_id is not distinct from public.mio_team()
+  ) then
+    raise exception 'Opportunità non disponibile.';
+  end if;
+
+  if exists (select 1 from public.opportunita_prese p where p.opportunita_id = p_opp and p.collaboratore_id = me) then
+    raise exception 'Hai già preso in carico questa opportunità: non puoi riprenderla.';
+  end if;
+
+  if exists (
+    select 1 from public.opportunita_prese p
+    where p.collaboratore_id = me
+      and p.scade_il > now()
+      and not exists (
+        select 1 from public.opportunita_esiti e
+        where e.opportunita_id = p.opportunita_id and e.collaboratore_id = me
+      )
+  ) then
+    raise exception 'Hai già un''opportunità in carico: rispondi Fatto o Non accettato prima di prenderne un''altra.';
+  end if;
+
+  if public.opportunita_occupata_da_altri(p_opp) then
+    raise exception 'Questa opportunità è già in carico a un altro collaboratore.';
+  end if;
+
+  insert into public.opportunita_prese (opportunita_id, collaboratore_id)
+  values (p_opp, me)
+  returning scade_il into scad;
+  return scad;
+end;
+$$;
+
+revoke all on function public.prendi_in_carico(uuid) from public;
+grant execute on function public.prendi_in_carico(uuid) to authenticated;
+
+-- -----------------------------------------------------------------------------
 -- Listino prezzi INTERNO: lo vedono solo gli utenti con un account (admin, soci,
 -- collaboratori), NON i visitatori del sito. Lo modificano admin e soci.
 -- Un prezzo può essere un intervallo (es. 500–600) e in € o $.

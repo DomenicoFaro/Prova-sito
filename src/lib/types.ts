@@ -128,6 +128,10 @@ export interface Opportunita {
   attiva: boolean
   /** null = creata dall'admin (per tutti); altrimenti link privato di quel collaboratore. */
   owner_id: string | null
+  /** Team a cui è destinata un'opportunità condivisa (null = team dell'admin). */
+  team_id: string | null
+  /** Chi l'ha caricata. */
+  creato_da: string | null
   created_at: string
 }
 
