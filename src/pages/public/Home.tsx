@@ -34,6 +34,9 @@ export default function Home() {
             <Link to="/portfolio" className="btn-primary px-6 py-3 text-base">
               Vai al portfolio <Icon name="arrowRight" className="h-4 w-4" />
             </Link>
+            <Link to="/area/prezzi" className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
+              <Icon name="euro" className="h-4 w-4" /> Prezzi
+            </Link>
             <Link to={session ? '/area' : '/login'} className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
               <Icon name="lock" className="h-4 w-4" /> Area riservata
             </Link>
