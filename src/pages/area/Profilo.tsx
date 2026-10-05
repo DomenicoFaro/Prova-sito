@@ -7,7 +7,7 @@ import { formatPercentuale } from '../../lib/format'
 import { BUCKET_AVATARS, caricaImmagine, messaggioErrore, supabase } from '../../lib/supabase'
 
 export default function Profilo() {
-  const { profilo, isAdmin, ricaricaProfilo } = useAuth()
+  const { profilo, isAdmin, isSocio, ricaricaProfilo } = useAuth()
   const [nome, setNome] = useState(profilo?.nome ?? '')
   const [salvataggio, setSalvataggio] = useState(false)
   const [caricaFoto, setCaricaFoto] = useState(false)
@@ -94,9 +94,9 @@ export default function Profilo() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="label">Ruolo</p>
-              <p className="text-sm text-slate-700">{isAdmin ? 'Amministratore' : 'Collaboratore'}</p>
+              <p className="text-sm text-slate-700">{isAdmin ? 'Amministratore' : isSocio ? 'Socio' : 'Collaboratore'}</p>
             </div>
-            {!isAdmin && (
+            {!isAdmin && !isSocio && (
               <div>
                 <p className="label">% predefinita</p>
                 <p className="text-sm text-slate-700">{formatPercentuale(profilo.percentuale_default)}</p>

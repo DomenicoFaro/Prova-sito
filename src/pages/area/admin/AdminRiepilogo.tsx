@@ -1,23 +1,27 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../../auth/AuthProvider'
 import { Avatar } from '../../../components/Avatar'
 import { Icon } from '../../../components/Icon'
 import { BadgeStatoProgetto, Caricamento, IntestazionePagina, MessaggioErrore, StatCard, Vuoto } from '../../../components/ui'
 import { formatData, formatEuro } from '../../../lib/format'
 import { ETICHETTE_PERIODO, nelPeriodo, type Periodo } from '../../../lib/periodo'
 import { supabase } from '../../../lib/supabase'
-import type { Guadagno, Profilo, Progetto } from '../../../lib/types'
+import type { Guadagno, Profilo, Progetto, RigaAzienda } from '../../../lib/types'
 import { esegui, useQuery } from '../../../lib/useQuery'
 
 export default function AdminRiepilogo() {
+  const { isSocio } = useAuth()
   const [periodo, setPeriodo] = useState<Periodo>('sempre')
   const { dati, caricamento, errore, ricarica } = useQuery(async () => {
-    const [progetti, guadagni, profili] = await Promise.all([
+    const [progetti, guadagni, profili, azienda] = await Promise.all([
       esegui<Progetto[]>(supabase.from('progetti').select('*').order('created_at', { ascending: false })),
       esegui<Guadagno[]>(supabase.from('v_guadagni').select('*')),
       esegui<Profilo[]>(supabase.from('profiles').select('*')),
+      // Il socio vede i soli totali dell'azienda (nessun dettaglio degli altri team)
+      isSocio ? esegui<RigaAzienda[]>(supabase.rpc('riepilogo_azienda')) : Promise.resolve<RigaAzienda[]>([]),
     ])
-    return { progetti, guadagni, profili }
+    return { progetti, guadagni, profili, azienda }
   })
 
   const calcolo = useMemo(() => {
@@ -41,14 +45,19 @@ export default function AdminRiepilogo() {
       c.residuo += Number(g.residuo)
       perCollaboratore.set(g.collaboratore_id, c)
     }
-    return { progetti, fatturato, dovuto, daPagare, margine: fatturato - dovuto, attivi, perCollaboratore }
+    const righeAzienda = dati.azienda.filter((r) => nelPeriodo(new Date(`${r.data_riferimento}T00:00:00`), periodo))
+    const azienda = {
+      fatturato: righeAzienda.reduce((t, r) => t + Number(r.prezzo_totale), 0),
+      progetti: righeAzienda.length,
+    }
+    return { progetti, fatturato, dovuto, daPagare, margine: fatturato - dovuto, attivi, perCollaboratore, azienda }
   }, [dati, periodo])
 
   return (
     <>
       <IntestazionePagina
         titolo="Riepilogo"
-        sottotitolo="Andamento globale dell'agenzia."
+        sottotitolo={isSocio ? 'Il tuo team e i totali dell\'azienda.' : "Andamento globale dell'agenzia."}
         azioni={
           <Link to="/area/admin/progetti/nuovo" className="btn-primary">
             <Icon name="plus" className="h-4 w-4" /> Nuovo progetto
@@ -74,8 +83,15 @@ export default function AdminRiepilogo() {
             ))}
           </div>
 
+          {isSocio && (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <StatCard etichetta="Fatturato azienda" valore={formatEuro(calcolo.azienda.fatturato)} icona="euro" tono="verde" nota={`${calcolo.azienda.progetti} progetti in tutto`} />
+              <StatCard etichetta="Il tuo fatturato" valore={formatEuro(calcolo.fatturato)} icona="chart" nota={`${calcolo.progetti.length} progetti del tuo team`} />
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-            <StatCard etichetta="Fatturato totale" valore={formatEuro(calcolo.fatturato)} icona="euro" nota={`${calcolo.progetti.length} progetti`} />
+            <StatCard etichetta={isSocio ? 'Fatturato del team' : 'Fatturato totale'} valore={formatEuro(calcolo.fatturato)} icona="euro" nota={`${calcolo.progetti.length} progetti`} />
             <StatCard etichetta="Da pagare ai collaboratori" valore={formatEuro(calcolo.daPagare)} icona="clock" tono="ambra" nota={`su ${formatEuro(calcolo.dovuto)} dovuti`} />
             <StatCard etichetta="Margine agenzia" valore={formatEuro(calcolo.margine)} icona="chart" tono="verde" nota={calcolo.fatturato > 0 ? `${Math.round((calcolo.margine / calcolo.fatturato) * 100)}% del fatturato` : undefined} />
             <StatCard etichetta="Progetti attivi" valore={calcolo.attivi} icona="folder" tono="slate" nota="In lavorazione o manutenzione" />
@@ -109,7 +125,7 @@ export default function AdminRiepilogo() {
 
             <section className="card overflow-hidden xl:col-span-2">
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 sm:px-6">
-                <h2 className="font-semibold text-slate-900">Collaboratori</h2>
+                <h2 className="font-semibold text-slate-900">{isSocio ? 'Il tuo team' : 'Collaboratori'}</h2>
                 <Link to="/area/admin/pagamenti" className="text-sm font-semibold text-brand-700 hover:underline">Pagamenti</Link>
               </div>
               {dati.profili.filter((p) => p.ruolo === 'collaboratore').length === 0 ? (
@@ -126,7 +142,10 @@ export default function AdminRiepilogo() {
                             <Avatar nome={c.nome} url={c.avatar_url} />
                             <div className="min-w-0 flex-1">
                               <p className="truncate font-semibold text-slate-900">{c.nome}{!c.attivo && <span className="ml-2 text-xs font-medium text-slate-400">(disattivato)</span>}</p>
-                              <p className="text-xs text-slate-500 tabular-nums">Guadagnato {formatEuro(t.dovuto)}</p>
+                              <p className="text-xs text-slate-500 tabular-nums">
+                                Guadagnato {formatEuro(t.dovuto)}
+                                {!isSocio && c.responsabile_id && <> · team di {dati.profili.find((r) => r.id === c.responsabile_id)?.nome ?? '—'}</>}
+                              </p>
                             </div>
                             <div className="text-right">
                               <p className="text-xs text-slate-500">Da pagare</p>

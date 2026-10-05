@@ -1,4 +1,4 @@
-export type Ruolo = 'admin' | 'collaboratore'
+export type Ruolo = 'admin' | 'socio' | 'collaboratore'
 export type StatoProgetto = 'in_lavorazione' | 'consegnato' | 'manutenzione'
 export type StatoPagamento = 'pagato' | 'parziale' | 'da_pagare'
 export type StatoRichiesta = 'nuova' | 'letta' | 'gestita'
@@ -13,6 +13,8 @@ export interface Profilo {
   ruolo: Ruolo
   percentuale_default: number
   attivo: boolean
+  /** Admin o socio che gestisce questo collaboratore (null = l'admin). */
+  responsabile_id: string | null
   created_at: string
 }
 
@@ -31,6 +33,8 @@ export interface Progetto {
   data_consegna: string | null
   stato: StatoProgetto
   pubblico: boolean
+  /** Admin o socio proprietario del progetto (null = l'admin). */
+  gestore_id: string | null
   created_at: string
 }
 
@@ -151,4 +155,30 @@ export interface OpportunitaPresa {
   collaboratore_id: string
   preso_il: string
   scade_il: string
+}
+
+export type TipoPrezzo = 'sito' | 'servizio'
+
+/** Riga della tabella `prezzi` (supabase/soci.sql): il listino pubblico. */
+export interface Prezzo {
+  id: string
+  tipo: TipoPrezzo
+  nome: string
+  descrizione: string
+  prezzo: number
+  a_partire_da: boolean
+  /** es. "una tantum", "al mese", "all'anno" */
+  periodicita: string
+  caratteristiche: string[]
+  in_evidenza: boolean
+  ordine: number
+  attivo: boolean
+  created_at: string
+}
+
+/** Riga di `riepilogo_azienda()`: solo importo, data e stato (nessun dato di collaboratori). */
+export interface RigaAzienda {
+  prezzo_totale: number
+  data_riferimento: string
+  stato: StatoProgetto
 }

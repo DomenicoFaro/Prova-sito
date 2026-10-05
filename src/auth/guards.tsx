@@ -14,15 +14,15 @@ export function RichiedeLogin() {
   return <Outlet />
 }
 
-/** Solo admin: un collaboratore viene rimandato alla sua dashboard. */
-export function RichiedeAdmin() {
-  const { isAdmin } = useAuth()
-  if (!isAdmin) return <Navigate to="/area/dashboard" replace />
+/** Admin o socio: un collaboratore viene rimandato alla sua dashboard. */
+export function RichiedeGestore() {
+  const { isGestore } = useAuth()
+  if (!isGestore) return <Navigate to="/area/dashboard" replace />
   return <Outlet />
 }
 
 /** Reindirizza /area alla dashboard giusta in base al ruolo. */
 export function RedirectRuolo() {
-  const { isAdmin } = useAuth()
-  return <Navigate to={isAdmin ? '/area/admin' : '/area/dashboard'} replace />
+  const { isGestore } = useAuth()
+  return <Navigate to={isGestore ? '/area/admin' : '/area/dashboard'} replace />
 }

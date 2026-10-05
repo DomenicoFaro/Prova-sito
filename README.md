@@ -40,6 +40,12 @@ src/
 Apri una nuova query, incolla [`supabase/opportunita.sql`](supabase/opportunita.sql) e premi **Run**.
 L'admin gestisce le attività da **Area riservata → Opportunità** (link Google Maps + dettagli, modifica, nascondi, elimina) e vede l'esito di ogni collaboratore. I collaboratori le vedono in sola lettura e premono **Fatto** o **Non accettato** (premendo di nuovo lo stesso tasto l'esito si annulla).
 
+### 2c. Soci e listino prezzi
+Apri una nuova query, incolla [`supabase/soci.sql`](supabase/soci.sql) e premi **Run** (dopo `account.sql`, `vendite.sql` e `opportunita.sql`).
+- **Admin** (tu): vede e gestisce tutto. **Socio** (es. Diego): stessa area, ma vede e gestisce solo il proprio team (collaboratori, progetti, vendite, pagamenti) e, dell'azienda, solo il fatturato totale. Non vede i tuoi guadagni né i tuoi collaboratori.
+- Crea il socio da **Collaboratori → Nuovo account → Ruolo: Socio**. Un socio può aggiungere collaboratori solo sotto di sé; tu puoi sceglierne il team (il tuo o quello di un socio).
+- **Prezzi**: il listino è pubblico su `/prezzi` e si modifica da **Area riservata → Prezzi** (admin e soci).
+
 ### 3. Configura l'autenticazione
 In **Authentication → Sign In / Providers**:
 - **Disattiva "Allow new users to sign up"**. Gli account li crea solo l'admin, e il database comunque assegna sempre il ruolo `collaboratore` ai nuovi utenti.

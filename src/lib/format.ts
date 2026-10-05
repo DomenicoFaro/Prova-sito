@@ -88,3 +88,12 @@ export function hostname(url: string | null | undefined): string {
   // Dal testo originale (non da new URL) per mostrare i domini con accenti leggibili, non in punycode
   return url.replace(/^[a-z]+:\/\//i, '').split(/[/?#]/)[0].replace(/^www\./, '')
 }
+
+/** "A partire da 500,00 € · una tantum" — descrive un prezzo del listino. */
+export function formatPrezzoListino(p: { prezzo: number | string; a_partire_da: boolean; periodicita: string }): { importo: string; prefisso: string; suffisso: string } {
+  return {
+    prefisso: p.a_partire_da ? 'da ' : '',
+    importo: formatEuro(p.prezzo).replace(',00', ''),
+    suffisso: p.periodicita ? p.periodicita : '',
+  }
+}

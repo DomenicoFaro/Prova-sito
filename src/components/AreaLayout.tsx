@@ -20,7 +20,14 @@ const VOCI_ADMIN: Voce[] = [
   { to: '/area/admin/opportunita', label: 'Opportunità', icona: 'pin' },
   { to: '/area/admin/pagamenti', label: 'Pagamenti', icona: 'wallet' },
   { to: '/area/admin/collaboratori', label: 'Collaboratori', icona: 'users' },
+  { to: '/area/admin/prezzi', label: 'Prezzi', icona: 'euro' },
 ]
+
+// Il socio ha la stessa area dell'admin. Le opportunità condivise le gestisce l'admin:
+// il socio usa la pagina dei collaboratori, dove può aggiungere i propri link.
+const VOCI_SOCIO: Voce[] = VOCI_ADMIN.map((v) =>
+  v.to === '/area/admin/opportunita' ? { ...v, to: '/area/opportunita' } : v,
+)
 
 const VOCI_COLLABORATORE: Voce[] = [
   { to: '/area/dashboard', label: 'I miei siti', icona: 'chart' },
@@ -29,13 +36,14 @@ const VOCI_COLLABORATORE: Voce[] = [
 ]
 
 export function AreaLayout() {
-  const { profilo, isAdmin, esci } = useAuth()
+  const { profilo, isAdmin, isSocio, esci } = useAuth()
   const [aperto, setAperto] = useState(false)
   const { pathname } = useLocation()
 
   useEffect(() => setAperto(false), [pathname])
 
-  const voci = [...(isAdmin ? VOCI_ADMIN : VOCI_COLLABORATORE), { to: '/area/profilo', label: 'Il mio profilo', icona: 'user' as const }]
+  const vociRuolo = isAdmin ? VOCI_ADMIN : isSocio ? VOCI_SOCIO : VOCI_COLLABORATORE
+  const voci = [...vociRuolo, { to: '/area/profilo', label: 'Il mio profilo', icona: 'user' as const }]
 
   const sidebar = (
     <div className="flex h-full flex-col">
@@ -62,7 +70,7 @@ export function AreaLayout() {
           <Avatar nome={profilo?.nome ?? ''} url={profilo?.avatar_url} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-white">{profilo?.nome}</p>
-            <p className="truncate text-xs text-slate-400">{isAdmin ? 'Amministratore' : 'Collaboratore'}</p>
+            <p className="truncate text-xs text-slate-400">{isAdmin ? 'Amministratore' : isSocio ? 'Socio' : 'Collaboratore'}</p>
           </div>
           <button onClick={esci} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" title="Esci" aria-label="Esci">
             <Icon name="logout" className="h-5 w-5" />

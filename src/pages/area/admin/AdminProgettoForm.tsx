@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../../../auth/AuthProvider'
 import { Icon } from '../../../components/Icon'
 import { Screenshot } from '../../../components/Screenshot'
 import { Caricamento, IntestazionePagina, MessaggioErrore, MessaggioSuccesso, Modale, Spinner } from '../../../components/ui'
@@ -22,6 +23,8 @@ interface FormProgetto {
   data_consegna: string
   stato: StatoProgetto
   pubblico: boolean
+  /** Chi gestisce il progetto ('' = l'admin). Il socio crea sempre per sé. */
+  gestore_id: string
 }
 
 interface RigaAssegnazione {
@@ -45,6 +48,7 @@ const VUOTO: FormProgetto = {
   data_consegna: '',
   stato: 'in_lavorazione',
   pubblico: false,
+  gestore_id: '',
 }
 
 const righe = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean)
@@ -52,6 +56,7 @@ const numero = parseNumero
 
 export default function AdminProgettoForm() {
   const { id } = useParams()
+  const { profilo: io, isAdmin } = useAuth()
   const nuovo = !id
   const navigate = useNavigate()
 
@@ -93,6 +98,7 @@ export default function AdminProgettoForm() {
             data_consegna: p.data_consegna ?? '',
             stato: p.stato,
             pubblico: p.pubblico,
+            gestore_id: p.gestore_id ?? '',
           }
         : VUOTO,
     )
@@ -188,6 +194,8 @@ export default function AdminProgettoForm() {
         data_consegna: form.data_consegna || null,
         stato: form.stato,
         pubblico: form.pubblico,
+        // Il socio crea per sé; l'admin sceglie (nel DB, null = admin)
+        ...(isAdmin ? { gestore_id: form.gestore_id || null } : nuovo ? { gestore_id: io?.id ?? null } : {}),
       }
 
       let progettoId = id
@@ -314,6 +322,17 @@ export default function AdminProgettoForm() {
                 <input type="checkbox" className="h-4 w-4 accent-brand-600" checked={form.pubblico} onChange={(e) => set('pubblico', e.target.checked)} />
                 <span className="text-sm font-medium text-slate-700">Mostra nel portfolio pubblico</span>
               </label>
+              {isAdmin && (
+                <div>
+                  <label className="label" htmlFor="gestore">Team</label>
+                  <select id="gestore" className="input" value={form.gestore_id} onChange={(e) => set('gestore_id', e.target.value)}>
+                    <option value="">Il mio team</option>
+                    {collaboratori.filter((c) => c.ruolo === 'socio' && c.attivo).map((c) => (
+                      <option key={c.id} value={c.id}>Team di {c.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div>
               <label className="label" htmlFor="descrizione">Descrizione</label>
