@@ -50,7 +50,16 @@ export default function AdminRiepilogo() {
       fatturato: righeAzienda.reduce((t, r) => t + Number(r.prezzo_totale), 0),
       progetti: righeAzienda.length,
     }
-    return { progetti, fatturato, dovuto, daPagare, margine: fatturato - dovuto, attivi, perCollaboratore, azienda }
+    // Fatturato per team (solo admin): i progetti senza gestore sono del titolare
+    const perTeam = new Map<string, { fatturato: number; progetti: number }>()
+    for (const p of progetti) {
+      const k = p.gestore_id ?? ''
+      const t = perTeam.get(k) ?? { fatturato: 0, progetti: 0 }
+      t.fatturato += Number(p.prezzo_totale)
+      t.progetti += 1
+      perTeam.set(k, t)
+    }
+    return { progetti, fatturato, dovuto, daPagare, margine: fatturato - dovuto, attivi, perCollaboratore, azienda, perTeam }
   }, [dati, periodo])
 
   return (
@@ -82,6 +91,32 @@ export default function AdminRiepilogo() {
               </button>
             ))}
           </div>
+
+          {!isSocio && dati.profili.some((p) => p.ruolo === 'socio') && (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+              <StatCard
+                etichetta="Fatturato mio team"
+                valore={formatEuro(calcolo.perTeam.get('')?.fatturato ?? 0)}
+                icona="euro"
+                nota={`${calcolo.perTeam.get('')?.progetti ?? 0} progetti`}
+              />
+              {dati.profili
+                .filter((p) => p.ruolo === 'socio')
+                .map((soc) => {
+                  const t = calcolo.perTeam.get(soc.id)
+                  return (
+                    <StatCard
+                      key={soc.id}
+                      etichetta={`Fatturato di ${soc.nome.split(' ')[0]}`}
+                      valore={formatEuro(t?.fatturato ?? 0)}
+                      icona="euro"
+                      tono="verde"
+                      nota={`${t?.progetti ?? 0} progetti`}
+                    />
+                  )
+                })}
+            </div>
+          )}
 
           {isSocio && (
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
