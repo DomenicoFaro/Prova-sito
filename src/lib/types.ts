@@ -159,13 +159,16 @@ export interface OpportunitaPresa {
 
 export type TipoPrezzo = 'sito' | 'servizio'
 
-/** Riga della tabella `prezzi` (supabase/soci.sql): il listino pubblico. */
+/** Riga della tabella `prezzi` (supabase/soci.sql): il listino interno, visibile solo a chi ha un account. */
 export interface Prezzo {
   id: string
   tipo: TipoPrezzo
   nome: string
   descrizione: string
+  /** Prezzo, o minimo se `prezzo_max` è valorizzato. */
   prezzo: number
+  prezzo_max: number | null
+  valuta: '€' | '$'
   a_partire_da: boolean
   /** es. "una tantum", "al mese", "all'anno" */
   periodicita: string

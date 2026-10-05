@@ -20,7 +20,7 @@ const VOCI_ADMIN: Voce[] = [
   { to: '/area/admin/opportunita', label: 'Opportunità', icona: 'pin' },
   { to: '/area/admin/pagamenti', label: 'Pagamenti', icona: 'wallet' },
   { to: '/area/admin/collaboratori', label: 'Collaboratori', icona: 'users' },
-  { to: '/area/admin/prezzi', label: 'Prezzi', icona: 'euro' },
+  { to: '/area/prezzi', label: 'Prezzi', icona: 'euro' },
 ]
 
 // Il socio ha la stessa area dell'admin. Le opportunità condivise le gestisce l'admin:
@@ -33,6 +33,7 @@ const VOCI_COLLABORATORE: Voce[] = [
   { to: '/area/dashboard', label: 'I miei siti', icona: 'chart' },
   { to: '/area/vendite', label: 'Vendite', icona: 'handshake' },
   { to: '/area/opportunita', label: 'Opportunità', icona: 'pin' },
+  { to: '/area/prezzi', label: 'Prezzi', icona: 'euro' },
 ]
 
 export function AreaLayout() {

@@ -44,7 +44,8 @@ L'admin gestisce le attività da **Area riservata → Opportunità** (link Googl
 Apri una nuova query, incolla [`supabase/soci.sql`](supabase/soci.sql) e premi **Run** (dopo `account.sql`, `vendite.sql` e `opportunita.sql`).
 - **Admin** (tu): vede e gestisce tutto. **Socio** (es. Diego): stessa area, ma vede e gestisce solo il proprio team (collaboratori, progetti, vendite, pagamenti) e, dell'azienda, solo il fatturato totale. Non vede i tuoi guadagni né i tuoi collaboratori.
 - Crea il socio da **Collaboratori → Nuovo account → Ruolo: Socio**. Un socio può aggiungere collaboratori solo sotto di sé; tu puoi sceglierne il team (il tuo o quello di un socio).
-- **Prezzi**: il listino è pubblico su `/prezzi` e si modifica da **Area riservata → Prezzi** (admin e soci).
+- **Prezzi**: listino interno (non pubblico), visibile a tutti quelli che hanno un account su **Area riservata → Prezzi**. Admin e soci lo modificano; i prezzi possono essere intervalli (500–600) in € o $.
+- **Opportunità**: organizzate per categorie. Ogni collaboratore ha anche «Le mie opportunità»; l'admin vede le cartelle di tutti i collaboratori, il socio solo quelle del suo team.
 
 ### 3. Configura l'autenticazione
 In **Authentication → Sign In / Providers**:

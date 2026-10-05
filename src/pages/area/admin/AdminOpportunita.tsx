@@ -1,5 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Icon } from '../../../components/Icon'
+import { BarraSezione, GrigliaSezioni } from '../../../components/SezioniOpportunita'
 import {
   BadgeEsitoOpportunita,
   Caricamento,
@@ -10,6 +12,7 @@ import {
   Vuoto,
 } from '../../../components/ui'
 import { formatDataOra } from '../../../lib/format'
+import { costruisciSezioni, filtraPerSezione } from '../../../lib/opportunita'
 import { messaggioErrore, supabase } from '../../../lib/supabase'
 import type { EsitoOpportunitaRiga, Opportunita, OpportunitaPresa, Profilo } from '../../../lib/types'
 import { esegui, useQuery } from '../../../lib/useQuery'
@@ -26,6 +29,8 @@ interface FormOpportunita {
 const FORM_VUOTO: FormOpportunita = { nome: '', maps_url: '', categoria: '', indirizzo: '', dettagli: '', attiva: true }
 
 export default function AdminOpportunita() {
+  const [params, setParams] = useSearchParams()
+  const sezione = params.get('sezione')
   const [modale, setModale] = useState(false)
   const [inModifica, setInModifica] = useState<Opportunita | null>(null)
   const [form, setForm] = useState<FormOpportunita>(FORM_VUOTO)
@@ -54,10 +59,34 @@ export default function AdminOpportunita() {
     return { profili, esiti, prese }
   }, [dati])
 
+  // Categorie (opportunità condivise) + una cartella per ogni collaboratore con i suoi link
+  const sezioni = useMemo(
+    () => costruisciSezioni(dati?.opportunita ?? [], { meId: '', mie: false, persone: mappe.profili }),
+    [dati, mappe.profili],
+  )
+  const sezioneCorrente = sezioni.find((x) => x.chiave === sezione) ?? null
+  const visibili = useMemo(
+    () => (sezioneCorrente ? filtraPerSezione(dati?.opportunita ?? [], sezioneCorrente.chiave, '') : []),
+    [dati, sezioneCorrente],
+  )
+  const categorieNote = useMemo(
+    () => Array.from(new Set((dati?.opportunita ?? []).map((o) => o.categoria.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'it')),
+    [dati],
+  )
+
+  const scegli = (chiave: string | null) => {
+    const next = new URLSearchParams(params)
+    if (chiave) next.set('sezione', chiave)
+    else next.delete('sezione')
+    setParams(next)
+  }
+
   function apri(o?: Opportunita) {
     setErrore(null)
     setInModifica(o ?? null)
-    setForm(o ? { nome: o.nome, maps_url: o.maps_url, categoria: o.categoria, indirizzo: o.indirizzo, dettagli: o.dettagli, attiva: o.attiva } : FORM_VUOTO)
+    // Dentro una categoria, la nuova opportunità parte già in quella categoria
+    const categoriaCorrente = sezioneCorrente?.chiave.startsWith('cat:') ? sezioneCorrente.titolo : ''
+    setForm(o ? { nome: o.nome, maps_url: o.maps_url, categoria: o.categoria, indirizzo: o.indirizzo, dettagli: o.dettagli, attiva: o.attiva } : { ...FORM_VUOTO, categoria: categoriaCorrente })
     setModale(true)
   }
 
@@ -108,7 +137,7 @@ export default function AdminOpportunita() {
     <>
       <IntestazionePagina
         titolo="Opportunità"
-        sottotitolo="Attività con alta vendibilità da proporre ai collaboratori. Qui vedi anche i link che i collaboratori aggiungono da soli (visibili solo a loro)."
+        sottotitolo="Le categorie con le attività da proporre ai collaboratori, e una cartella per ogni collaboratore con i link che ha caricato lui."
         azioni={
           <>
             {numeroCondivise > 0 && (
@@ -130,15 +159,25 @@ export default function AdminOpportunita() {
       ) : (
         <div className="space-y-4">
           {errore && !modale && <MessaggioErrore>{errore}</MessaggioErrore>}
-          {!dati?.opportunita.length ? (
-            <div className="card">
-              <Vuoto icona="pin" titolo="Nessuna opportunità">
-                Premi <strong>Nuova opportunità</strong> e incolla il link Google Maps dell'attività.
-              </Vuoto>
-            </div>
+          {!sezioneCorrente ? (
+            <>
+              {!dati?.opportunita.length && (
+                <p className="text-sm text-slate-500">
+                  Nessuna opportunità: premi <strong>Nuova opportunità</strong> e incolla il link Google Maps dell'attività.
+                </p>
+              )}
+              <GrigliaSezioni sezioni={sezioni} onScegli={scegli} />
+            </>
           ) : (
+            <>
+              <BarraSezione titolo={sezioneCorrente.titolo} onIndietro={() => scegli(null)} />
+              {visibili.length === 0 && (
+                <div className="card">
+                  <Vuoto icona="pin" titolo="Nessuna opportunità in questa cartella" />
+                </div>
+              )}
             <ul className="grid gap-4 lg:grid-cols-2">
-              {dati.opportunita.map((o) => {
+              {visibili.map((o) => {
                 const esiti = mappe.esiti.get(o.id) ?? []
                 return (
                   <li key={o.id} className={`card p-5 ${o.attiva ? '' : 'opacity-60'}`}>
@@ -203,6 +242,7 @@ export default function AdminOpportunita() {
                 )
               })}
             </ul>
+            </>
           )}
         </div>
       )}
@@ -221,7 +261,10 @@ export default function AdminOpportunita() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label" htmlFor="oc">Categoria</label>
-              <input id="oc" className="input" placeholder="es. Ristorante" value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} />
+              <input id="oc" className="input" list="categorie-note" placeholder="es. Pizzerie" value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} />
+              <datalist id="categorie-note">
+                {categorieNote.map((c) => <option key={c} value={c} />)}
+              </datalist>
             </div>
             <div>
               <label className="label" htmlFor="oi">Zona / indirizzo</label>

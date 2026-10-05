@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../../auth/AuthProvider'
 import { Icon } from '../../../components/Icon'
+import { BarraSezione, GrigliaSezioni } from '../../../components/SezioniOpportunita'
 import {
   BadgeEsitoOpportunita,
   Caricamento,
@@ -10,8 +12,9 @@ import {
   Spinner,
   Vuoto,
 } from '../../../components/ui'
+import { CHIAVE_MIE, costruisciSezioni, filtraPerSezione } from '../../../lib/opportunita'
 import { messaggioErrore, supabase } from '../../../lib/supabase'
-import type { EsitoOpportunita, EsitoOpportunitaRiga, Opportunita as OpportunitaRiga, OpportunitaPresa } from '../../../lib/types'
+import type { EsitoOpportunita, EsitoOpportunitaRiga, Opportunita as OpportunitaRiga, OpportunitaPresa, Profilo } from '../../../lib/types'
 import { esegui, useQuery } from '../../../lib/useQuery'
 
 interface FormLink {
@@ -31,7 +34,9 @@ function tempoRimasto(scadenza: string, adesso: number): string {
 const FORM_VUOTO: FormLink = { nome: '', maps_url: '', categoria: '', indirizzo: '', dettagli: '' }
 
 export default function Opportunita() {
-  const { profilo } = useAuth()
+  const { profilo, isGestore } = useAuth()
+  const [params, setParams] = useSearchParams()
+  const sezione = params.get('sezione')
   const [inCorso, setInCorso] = useState<string | null>(null)
   const [errore, setErrore] = useState<string | null>(null)
   const [modale, setModale] = useState(false)
@@ -42,13 +47,15 @@ export default function Opportunita() {
   const [daEliminare, setDaEliminare] = useState<OpportunitaRiga | null>(null)
 
   const { dati, caricamento, errore: erroreCaricamento, ricarica } = useQuery(async () => {
-    const [opportunita, esiti, prese] = await Promise.all([
+    // Gli esiti li limita il database: un collaboratore vede i propri, il socio anche quelli del suo team
+    const [opportunita, esiti, prese, persone] = await Promise.all([
       esegui<OpportunitaRiga[]>(supabase.from('opportunita').select('*').order('created_at', { ascending: false })),
-      esegui<EsitoOpportunitaRiga[]>(supabase.from('opportunita_esiti').select('*').eq('collaboratore_id', profilo?.id ?? '')),
+      esegui<EsitoOpportunitaRiga[]>(supabase.from('opportunita_esiti').select('*')),
       esegui<OpportunitaPresa[]>(supabase.from('opportunita_prese').select('*').eq('collaboratore_id', profilo?.id ?? '')),
+      isGestore ? esegui<Profilo[]>(supabase.from('profiles').select('*')) : Promise.resolve<Profilo[]>([]),
     ])
-    return { opportunita, esiti, prese }
-  }, [profilo?.id])
+    return { opportunita, esiti, prese, persone: new Map(persone.map((p) => [p.id, p])) }
+  }, [profilo?.id, isGestore])
 
   // Orologio: aggiorna il conto alla rovescia e allo scadere ricarica la lista
   const [adesso, setAdesso] = useState(() => Date.now())
@@ -59,7 +66,34 @@ export default function Opportunita() {
 
   const prese = useMemo(() => new Map((dati?.prese ?? []).map((p) => [p.opportunita_id, p])), [dati])
 
-  const esiti = useMemo(() => new Map((dati?.esiti ?? []).map((e) => [e.opportunita_id, e.esito])), [dati])
+  const esiti = useMemo(
+    () => new Map((dati?.esiti ?? []).filter((e) => e.collaboratore_id === profilo?.id).map((e) => [e.opportunita_id, e.esito])),
+    [dati, profilo?.id],
+  )
+
+  /** Esito dei link caricati dai collaboratori del team (visibili al socio). */
+  const esitiTeam = useMemo(() => new Map((dati?.esiti ?? []).map((e) => [`${e.opportunita_id}:${e.collaboratore_id}`, e.esito])), [dati])
+
+  const sezioni = useMemo(
+    () => costruisciSezioni(dati?.opportunita ?? [], { meId: profilo?.id ?? '', mie: true, persone: isGestore ? (dati?.persone ?? null) : null }),
+    [dati, profilo?.id, isGestore],
+  )
+  const sezioneCorrente = sezioni.find((x) => x.chiave === sezione) ?? null
+  const visibili = useMemo(
+    () => (sezioneCorrente ? filtraPerSezione(dati?.opportunita ?? [], sezioneCorrente.chiave, profilo?.id ?? '') : []),
+    [dati, sezioneCorrente, profilo?.id],
+  )
+  const categorieNote = useMemo(
+    () => Array.from(new Set((dati?.opportunita ?? []).map((o) => o.categoria.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'it')),
+    [dati],
+  )
+
+  const scegli = (chiave: string | null) => {
+    const next = new URLSearchParams(params)
+    if (chiave) next.set('sezione', chiave)
+    else next.delete('sezione')
+    setParams(next)
+  }
 
   /** Presa in carico ancora valida (non scaduta e senza risposta). */
   const inCaricoOra = useMemo(
@@ -91,7 +125,9 @@ export default function Opportunita() {
   function apri(o?: OpportunitaRiga) {
     setErroreForm(null)
     setInModifica(o ?? null)
-    setForm(o ? { nome: o.nome, maps_url: o.maps_url, categoria: o.categoria, indirizzo: o.indirizzo, dettagli: o.dettagli } : FORM_VUOTO)
+    // Se stai guardando una categoria, il nuovo link parte già in quella categoria
+    const categoriaCorrente = sezioneCorrente?.chiave.startsWith('cat:') ? sezioneCorrente.titolo : ''
+    setForm(o ? { nome: o.nome, maps_url: o.maps_url, categoria: o.categoria, indirizzo: o.indirizzo, dettagli: o.dettagli } : { ...FORM_VUOTO, categoria: categoriaCorrente })
     setModale(true)
   }
 
@@ -146,7 +182,11 @@ export default function Opportunita() {
     <>
       <IntestazionePagina
         titolo="Opportunità"
-        sottotitolo="Attività con alta vendibilità scelte per te. Aprile su Google Maps e segna com'è andata. Prendi in carico un'opportunità alla volta: hai 12 ore per rispondere, poi torna disponibile per gli altri. Puoi aggiungere anche i tuoi link: li vedi solo tu."
+        sottotitolo={
+          isGestore
+            ? "Scegli una categoria per vedere le attività, oppure apri i link caricati dai collaboratori del tuo team."
+            : "Scegli una categoria, aprile su Google Maps e segna com'è andata. Prendi in carico un'opportunità alla volta: hai 12 ore per rispondere, poi torna disponibile per gli altri. I link che aggiungi tu li trovi in «Le mie opportunità»."
+        }
         azioni={
           <button className="btn-primary" onClick={() => apri()}>
             <Icon name="plus" className="h-4 w-4" /> Aggiungi link
@@ -158,23 +198,37 @@ export default function Opportunita() {
         <Caricamento />
       ) : erroreCaricamento ? (
         <MessaggioErrore onRiprova={ricarica}>{erroreCaricamento}</MessaggioErrore>
-      ) : !dati?.opportunita.length ? (
-        <div className="card">
-          <Vuoto icona="pin" titolo="Nessuna opportunità al momento">
-            Quando l'amministratore ne aggiunge una, la trovi qui. Puoi anche aggiungere i tuoi link con <strong>Aggiungi link</strong>.
-          </Vuoto>
+      ) : !sezioneCorrente ? (
+        <div className="space-y-4">
+          {errore && <MessaggioErrore>{errore}</MessaggioErrore>}
+          <GrigliaSezioni sezioni={sezioni} onScegli={scegli} />
         </div>
       ) : (
         <div className="space-y-4">
+          <BarraSezione titolo={sezioneCorrente.titolo} onIndietro={() => scegli(null)} />
           {errore && <MessaggioErrore>{errore}</MessaggioErrore>}
+          {visibili.length === 0 && (
+            <div className="card">
+              <Vuoto icona="pin" titolo="Nessuna opportunità qui">
+                {sezioneCorrente.chiave === CHIAVE_MIE ? (
+                  <>Aggiungi un tuo link con <strong>Aggiungi link</strong>.</>
+                ) : (
+                  'Quando ne arrivano di nuove le trovi in questa categoria.'
+                )}
+              </Vuoto>
+            </div>
+          )}
           <ul className="grid gap-4 lg:grid-cols-2">
-            {dati.opportunita.map((o) => {
+            {visibili.map((o) => {
+              const mio = o.owner_id === profilo?.id
+              const delTeam = !!o.owner_id && !mio
+              const esitoTeam = delTeam ? (esitiTeam.get(`${o.id}:${o.owner_id}`) ?? null) : null
               const esito = esiti.get(o.id) ?? null
               const occupato = inCorso === o.id
               const presa = prese.get(o.id)
               const presaValida = !!presa && new Date(presa.scade_il).getTime() > adesso
               const scaduta = !!presa && !presaValida && !esito
-              const puoRispondere = !!o.owner_id || presaValida
+              const puoRispondere = mio || presaValida
               return (
                 <li key={o.id} className="card flex flex-col p-5">
                   <div className="flex items-start justify-between gap-3">
@@ -185,7 +239,7 @@ export default function Opportunita() {
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      {o.owner_id && (
+                      {mio && (
                         <>
                           <span className="mr-1 text-xs font-semibold text-brand-700">Tuo</span>
                           <button className="btn-ghost p-2" onClick={() => apri(o)} aria-label="Modifica link">
@@ -196,7 +250,12 @@ export default function Opportunita() {
                           </button>
                         </>
                       )}
-                      {scaduta ? (
+                      {delTeam ? (
+                        <>
+                          <span className="mr-1 truncate text-xs font-semibold text-brand-700">{dati?.persone.get(o.owner_id!)?.nome ?? 'Collaboratore'}</span>
+                          <BadgeEsitoOpportunita esito={esitoTeam} />
+                        </>
+                      ) : scaduta ? (
                         <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">Scaduta</span>
                       ) : presaValida && !esito ? (
                         <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
@@ -272,7 +331,10 @@ export default function Opportunita() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label" htmlFor="cc">Categoria</label>
-              <input id="cc" className="input" placeholder="es. Ristorante" value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} />
+              <input id="cc" className="input" list="categorie-note" placeholder="es. Pizzerie" value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} />
+              <datalist id="categorie-note">
+                {categorieNote.map((c) => <option key={c} value={c} />)}
+              </datalist>
             </div>
             <div>
               <label className="label" htmlFor="ci">Zona / indirizzo</label>
@@ -283,7 +345,7 @@ export default function Opportunita() {
             <label className="label" htmlFor="cd">Dettagli</label>
             <textarea id="cd" rows={4} className="input" value={form.dettagli} onChange={(e) => setForm((f) => ({ ...f, dettagli: e.target.value }))} />
           </div>
-          <p className="text-xs text-slate-500">Questo link lo vedi solo tu (e l'amministratore).</p>
+          <p className="text-xs text-slate-500">Questo link lo vedi solo tu (e chi gestisce il tuo team).</p>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setModale(false)}>Annulla</button>
             <button type="submit" className="btn-primary" disabled={salvataggio}>

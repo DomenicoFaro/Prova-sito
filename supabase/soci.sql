@@ -314,7 +314,29 @@ revoke all on function public.riepilogo_azienda() from public, anon;
 grant execute on function public.riepilogo_azienda() to authenticated;
 
 -- -----------------------------------------------------------------------------
--- Listino prezzi: lo vedono tutti (anche i visitatori), lo modificano admin e soci.
+-- Opportunità: il socio vede i link privati dei collaboratori del suo team
+-- (e i loro esiti). L'admin le vede già tutte.
+-- -----------------------------------------------------------------------------
+drop policy if exists "opportunita: socio legge il suo team" on public.opportunita;
+drop policy if exists "esiti: socio legge il suo team"       on public.opportunita_esiti;
+drop policy if exists "prese: socio legge il suo team"       on public.opportunita_prese;
+
+create policy "opportunita: socio legge il suo team"
+  on public.opportunita for select to authenticated
+  using (public.is_socio() and owner_id is not null and public.gestisce(owner_id));
+
+create policy "esiti: socio legge il suo team"
+  on public.opportunita_esiti for select to authenticated
+  using (public.is_socio() and public.gestisce(collaboratore_id));
+
+create policy "prese: socio legge il suo team"
+  on public.opportunita_prese for select to authenticated
+  using (public.is_socio() and public.gestisce(collaboratore_id));
+
+-- -----------------------------------------------------------------------------
+-- Listino prezzi INTERNO: lo vedono solo gli utenti con un account (admin, soci,
+-- collaboratori), NON i visitatori del sito. Lo modificano admin e soci.
+-- Un prezzo può essere un intervallo (es. 500–600) e in € o $.
 -- -----------------------------------------------------------------------------
 create table if not exists public.prezzi (
   id               uuid primary key default gen_random_uuid(),
@@ -322,6 +344,8 @@ create table if not exists public.prezzi (
   nome             text not null check (char_length(trim(nome)) between 1 and 200),
   descrizione      text not null default '' check (char_length(descrizione) <= 2000),
   prezzo           numeric(12,2) not null check (prezzo >= 0),
+  prezzo_max       numeric(12,2) check (prezzo_max is null or prezzo_max >= prezzo),
+  valuta           text not null default '€' check (valuta in ('€', '$')),
   a_partire_da     boolean not null default false,
   periodicita      text not null default '' check (char_length(periodicita) <= 50),  -- es. "una tantum", "al mese"
   caratteristiche  text[] not null default '{}',
@@ -331,16 +355,21 @@ create table if not exists public.prezzi (
   created_at       timestamptz not null default now()
 );
 
+-- Se la tabella esisteva già dalla versione precedente
+alter table public.prezzi add column if not exists prezzo_max numeric(12,2);
+alter table public.prezzi add column if not exists valuta     text not null default '€';
+
 create index if not exists prezzi_tipo_ordine_idx on public.prezzi (tipo, ordine);
 
 alter table public.prezzi enable row level security;
 
 drop policy if exists "prezzi: lettura pubblica"   on public.prezzi;
+drop policy if exists "prezzi: lettura utenti"     on public.prezzi;
 drop policy if exists "prezzi: gestori modificano" on public.prezzi;
 
-create policy "prezzi: lettura pubblica"
-  on public.prezzi for select to anon, authenticated
-  using (attivo);
+create policy "prezzi: lettura utenti"
+  on public.prezzi for select to authenticated
+  using (attivo and public.is_attivo());
 
 create policy "prezzi: gestori modificano"
   on public.prezzi for all to authenticated
@@ -348,7 +377,6 @@ create policy "prezzi: gestori modificano"
   with check (public.is_admin() or public.is_socio());
 
 revoke all on public.prezzi from anon, authenticated;
-grant select                         on public.prezzi to anon;
 grant select, insert, update, delete on public.prezzi to authenticated;
 
 -- Fa vedere subito le novità all'API del sito

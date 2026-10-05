@@ -10,7 +10,6 @@ import Home from './pages/public/Home'
 // Parte pubblica secondaria e area riservata caricate su richiesta
 const Portfolio = lazy(() => import('./pages/public/Portfolio'))
 const ProgettoDettaglio = lazy(() => import('./pages/public/ProgettoDettaglio'))
-const Prezzi = lazy(() => import('./pages/public/Prezzi'))
 const NotFound = lazy(() => import('./pages/public/NotFound'))
 const Login = lazy(() => import('./pages/auth/Login'))
 const PasswordDimenticata = lazy(() => import('./pages/auth/PasswordDimenticata'))
@@ -20,6 +19,7 @@ const DettaglioAssegnazione = lazy(() => import('./pages/area/collaboratore/Dett
 const Vendite = lazy(() => import('./pages/area/collaboratore/Vendite'))
 const NuovaVendita = lazy(() => import('./pages/area/collaboratore/NuovaVendita'))
 const Opportunita = lazy(() => import('./pages/area/collaboratore/Opportunita'))
+const Prezzi = lazy(() => import('./pages/area/Prezzi'))
 const Profilo = lazy(() => import('./pages/area/Profilo'))
 const AdminRiepilogo = lazy(() => import('./pages/area/admin/AdminRiepilogo'))
 const AdminProgetti = lazy(() => import('./pages/area/admin/AdminProgetti'))
@@ -28,7 +28,6 @@ const AdminPagamenti = lazy(() => import('./pages/area/admin/AdminPagamenti'))
 const AdminCollaboratori = lazy(() => import('./pages/area/admin/AdminCollaboratori'))
 const AdminVendite = lazy(() => import('./pages/area/admin/AdminVendite'))
 const AdminOpportunita = lazy(() => import('./pages/area/admin/AdminOpportunita'))
-const AdminPrezzi = lazy(() => import('./pages/area/admin/AdminPrezzi'))
 const AdminVistaCome = lazy(() => import('./pages/area/admin/AdminVistaCome'))
 const AdminVistaComeDettaglio = lazy(() =>
   import('./pages/area/admin/AdminVistaCome').then((m) => ({ default: m.AdminVistaComeDettaglio })),
@@ -44,7 +43,6 @@ export default function App() {
               <Route index element={<Home />} />
               <Route path="portfolio" element={<Portfolio />} />
               <Route path="portfolio/:id" element={<ProgettoDettaglio />} />
-              <Route path="prezzi" element={<Prezzi />} />
               <Route path="*" element={<NotFound />} />
             </Route>
 
@@ -60,6 +58,7 @@ export default function App() {
                 <Route path="vendite" element={<Vendite />} />
                 <Route path="vendite/nuova" element={<NuovaVendita />} />
                 <Route path="opportunita" element={<Opportunita />} />
+                <Route path="prezzi" element={<Prezzi />} />
                 <Route path="profilo" element={<Profilo />} />
 
                 <Route path="admin" element={<RichiedeGestore />}>
@@ -70,7 +69,6 @@ export default function App() {
                   <Route path="pagamenti" element={<AdminPagamenti />} />
                   <Route path="vendite" element={<AdminVendite />} />
                   <Route path="opportunita" element={<AdminOpportunita />} />
-                  <Route path="prezzi" element={<AdminPrezzi />} />
                   <Route path="collaboratori" element={<AdminCollaboratori />} />
                   <Route path="collaboratori/:id" element={<AdminVistaCome />} />
                   <Route path="collaboratori/:id/progetti/:assegnazioneId" element={<AdminVistaComeDettaglio />} />

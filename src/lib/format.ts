@@ -89,11 +89,15 @@ export function hostname(url: string | null | undefined): string {
   return url.replace(/^[a-z]+:\/\//i, '').split(/[/?#]/)[0].replace(/^www\./, '')
 }
 
-/** "A partire da 500,00 € · una tantum" — descrive un prezzo del listino. */
-export function formatPrezzoListino(p: { prezzo: number | string; a_partire_da: boolean; periodicita: string }): { importo: string; prefisso: string; suffisso: string } {
-  return {
-    prefisso: p.a_partire_da ? 'da ' : '',
-    importo: formatEuro(p.prezzo).replace(',00', ''),
-    suffisso: p.periodicita ? p.periodicita : '',
-  }
+/** Prezzo di listino in forma breve: "500–600 €", "da 800 €", "20 $ al mese". */
+export function formatPrezzoListino(p: {
+  prezzo: number | string
+  prezzo_max: number | string | null
+  valuta: string
+  a_partire_da: boolean
+  periodicita: string
+}): string {
+  const n = (v: number | string) => Number(v).toLocaleString('it-IT', { maximumFractionDigits: 2 })
+  const importo = p.prezzo_max != null && Number(p.prezzo_max) > Number(p.prezzo) ? `${n(p.prezzo)}–${n(p.prezzo_max)}` : n(p.prezzo)
+  return [p.a_partire_da ? 'da' : '', `${importo} ${p.valuta}`, p.periodicita].filter(Boolean).join(' ')
 }
