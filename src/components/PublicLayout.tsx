@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthProvider'
 const VOCI = [
   { to: '/', label: 'Home', end: true },
   { to: '/portfolio', label: 'Portfolio' },
+  { to: '/prezzi', label: 'Prezzi' },
   { to: '/sito-su-misura', label: 'Acquista il tuo sito' },
 ]
 

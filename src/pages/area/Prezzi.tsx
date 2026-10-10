@@ -39,10 +39,11 @@ const VUOTO: FormPrezzo = {
 
 const SEZIONI: { tipo: TipoPrezzo; titolo: string }[] = [
   { tipo: 'sito', titolo: 'Siti web' },
-  { tipo: 'servizio', titolo: 'Servizi e abbonamenti' },
+  { tipo: 'servizio', titolo: 'Servizi' },
+  { tipo: 'abbonamento', titolo: 'Abbonamenti' },
 ]
 
-/** Listino interno: lo vedono tutti quelli che hanno un account; lo modificano admin e soci. */
+/** Gestione del listino: lo modificano admin e soci. Le voci visibili sono pubbliche (pagina /prezzi). */
 export default function Prezzi() {
   const { isGestore } = useAuth()
   const [modale, setModale] = useState<'nuovo' | Prezzo | null>(null)
@@ -150,8 +151,8 @@ export default function Prezzi() {
         titolo="Prezzi"
         sottotitolo={
           isGestore
-            ? 'Il listino interno: lo vedono tutti i collaboratori, non è pubblico. Le voci nascoste le vedi solo tu.'
-            : 'Il listino dei nostri siti e servizi. Usalo come riferimento quando parli con un cliente.'
+            ? 'Il listino è pubblico (pagina Prezzi del sito): le voci nascoste le vedi solo tu e i soci.'
+            : 'Il listino dei nostri siti, servizi e abbonamenti. Usalo come riferimento quando parli con un cliente.'
         }
         azioni={
           isGestore && (
@@ -241,7 +242,8 @@ export default function Prezzi() {
               <label className="label" htmlFor="pt">Tipo</label>
               <select id="pt" className="input" value={form.tipo} onChange={(e) => set('tipo', e.target.value as TipoPrezzo)}>
                 <option value="sito">Sito web</option>
-                <option value="servizio">Servizio / abbonamento</option>
+                <option value="servizio">Servizio</option>
+                <option value="abbonamento">Abbonamento</option>
               </select>
             </div>
             <div>
@@ -290,7 +292,7 @@ export default function Prezzi() {
             {([
               ['a_partire_da', 'Mostra "da" davanti al prezzo'],
               ['in_evidenza', 'Metti in evidenza'],
-              ['attivo', 'Visibile ai collaboratori'],
+              ['attivo', 'Visibile a tutti (sito pubblico)'],
             ] as const).map(([k, etichetta]) => (
               <label key={k} className="flex items-center gap-3">
                 <input type="checkbox" className="h-4 w-4 accent-brand-600" checked={form[k]} onChange={(e) => set(k, e.target.checked)} />
@@ -309,7 +311,7 @@ export default function Prezzi() {
 
       <Modale aperta={daEliminare !== null} titolo="Eliminare la voce?" onChiudi={() => setDaEliminare(null)}>
         <p className="text-sm text-slate-600">
-          "{daEliminare?.nome}" verrà rimossa definitivamente dal listino. Per toglierla solo dalla vista dei collaboratori usa "Nascondi".
+          "{daEliminare?.nome}" verrà rimossa definitivamente dal listino. Per toglierla solo dalla vista pubblica usa "Nascondi".
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button className="btn-secondary" onClick={() => setDaEliminare(null)}>Annulla</button>

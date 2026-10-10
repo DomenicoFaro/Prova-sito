@@ -165,9 +165,9 @@ export interface OpportunitaPresa {
   scade_il: string
 }
 
-export type TipoPrezzo = 'sito' | 'servizio'
+export type TipoPrezzo = 'sito' | 'servizio' | 'abbonamento'
 
-/** Riga della tabella `prezzi` (supabase/soci.sql): il listino interno, visibile solo a chi ha un account. */
+/** Riga della tabella `prezzi` (supabase/soci.sql + prezzi_pubblici.sql): il listino, pubblico per le voci visibili. */
 export interface Prezzo {
   id: string
   tipo: TipoPrezzo

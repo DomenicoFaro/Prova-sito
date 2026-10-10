@@ -10,6 +10,7 @@ import Home from './pages/public/Home'
 // Parte pubblica secondaria e area riservata caricate su richiesta
 const Portfolio = lazy(() => import('./pages/public/Portfolio'))
 const ProgettoDettaglio = lazy(() => import('./pages/public/ProgettoDettaglio'))
+const PrezziPubblici = lazy(() => import('./pages/public/Prezzi'))
 const SitoSuMisura = lazy(() => import('./pages/public/SitoSuMisura'))
 const Ordine = lazy(() => import('./pages/public/Ordine'))
 const NotFound = lazy(() => import('./pages/public/NotFound'))
@@ -46,6 +47,7 @@ export default function App() {
               <Route index element={<Home />} />
               <Route path="portfolio" element={<Portfolio />} />
               <Route path="portfolio/:id" element={<ProgettoDettaglio />} />
+              <Route path="prezzi" element={<PrezziPubblici />} />
               <Route path="sito-su-misura" element={<SitoSuMisura />} />
               <Route path="ordine/:token" element={<Ordine />} />
               <Route path="*" element={<NotFound />} />
