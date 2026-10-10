@@ -1,4 +1,5 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
+import type { Preventivo } from './configuratore'
 import { supabase } from './supabase'
 
 export type StatoOrdine = 'richiesto' | 'preventivo_inviato' | 'pagato' | 'annullato'
@@ -43,6 +44,15 @@ export interface OrdineSito {
   importo_pagato: number | null
   pagato_il: string | null
   contratto_finale: string | null
+  /** Configuratore (supabase/configuratore.sql). Null per gli ordini fatti con il vecchio modulo. */
+  tipologia_codice: string | null
+  pagine_numero: number | null
+  urgenza_richiesta: boolean
+  urgenza_confermata: boolean
+  totale_indicativo: number | null
+  dettaglio_preventivo: Preventivo | null
+  approvazione_manuale: boolean
+  allegati: string[]
   created_at: string
 }
 
@@ -58,6 +68,8 @@ export interface OrdineCliente {
   funzionalita: string[]
   dominio: string
   descrizione: string
+  budget?: string
+  scadenza?: string
   prezzo: number | null
   acconto: number | null
   consegna_giorni: number | null
@@ -65,25 +77,15 @@ export interface OrdineCliente {
   pagato_il: string | null
   importo_pagato: number | null
   created_at: string
+  totale_indicativo?: number | null
+  dettaglio_preventivo?: Preventivo | null
+  /** Il prezzo va verificato e confermato a mano da FormaWeb prima del pagamento. */
+  approvazione_manuale?: boolean
+  urgenza_richiesta?: boolean
+  urgenza_confermata?: boolean
+  n_allegati?: number
   contratto: string | null
 }
-
-export const FUNZIONALITA_SITO = [
-  'Modulo di contatto',
-  'Galleria immagini',
-  'Blog / notizie',
-  'Prenotazioni online',
-  'Negozio online (e-commerce)',
-  'Area clienti con login',
-  'Newsletter',
-  'Mappa e orari',
-  'Collegamento ai social',
-  'Chat WhatsApp',
-  'Sito multilingua',
-  'SEO di base',
-] as const
-
-export const PAGINE_SITO = ['1 pagina', '2–5 pagine', '6–10 pagine', '11–20 pagine', 'Più di 20 pagine'] as const
 
 /** Memoria locale dei link agli ordini, così il cliente li ritrova dallo stesso dispositivo. */
 const CHIAVE_ORDINI = 'ordini-cliente'

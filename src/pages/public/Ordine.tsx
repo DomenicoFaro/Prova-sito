@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { Icon } from '../../components/Icon'
+import { RiepilogoPreventivo } from '../../components/RiepilogoPreventivo'
 import { Seo } from '../../components/Seo'
 import { TestoContratto } from '../../components/TestoContratto'
 import { Caricamento, MessaggioErrore, MessaggioSuccesso, Spinner } from '../../components/ui'
@@ -141,9 +142,15 @@ export default function Ordine() {
                 <Icon name="clock" className="h-5 w-5" />
               </span>
               <div>
-                <h2 className="font-semibold text-slate-900">Stiamo preparando il tuo preventivo</h2>
+                <h2 className="font-semibold text-slate-900">
+                  {ordine.approvazione_manuale ? 'La tua richiesta è in verifica manuale' : 'Stiamo confermando il tuo preventivo'}
+                </h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Appena è pronto lo trovi su questa pagina, insieme al contratto da leggere. Ricontrolla qui tra poco.
+                  {ordine.approvazione_manuale
+                    ? 'Il tuo progetto include una voce personalizzata o con prezzo «da»: FormaWeb deve verificarlo e confermarti l’importo definitivo. '
+                    : 'FormaWeb sta verificando la tua richiesta e confermerà l’importo definitivo. '}
+                  <strong>Il pagamento sarà disponibile solo dopo questa conferma.</strong> Appena è pronto lo trovi su questa pagina, insieme al
+                  contratto da leggere. Ricontrolla qui tra poco.
                 </p>
                 <button onClick={() => carica()} className="btn-secondary mt-3 text-xs">
                   Aggiorna
@@ -165,6 +172,7 @@ export default function Ordine() {
               <>
                 <div className="card p-5 sm:p-6">
                   <h2 className="text-lg font-bold text-slate-900">Il tuo preventivo</h2>
+                  <p className="mt-1 text-sm text-emerald-700">Importo confermato da FormaWeb.</p>
                   <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
                     <Dato etichetta="Prezzo del sito" valore={formatEuro(ordine.prezzo)} />
                     <Dato etichetta="Da pagare ora" valore={formatEuro(daPagare)} />
@@ -236,6 +244,25 @@ export default function Ordine() {
           </>
         )}
 
+        {ordine.dettaglio_preventivo && ordine.stato !== 'annullato' && (
+          <div className="card p-5 sm:p-6">
+            <h2 className="font-semibold text-slate-900">
+              {ordine.stato === 'richiesto' ? 'Preventivo indicativo' : 'Il preventivo indicativo della tua richiesta'}
+            </h2>
+            <div className="mt-3">
+              <RiepilogoPreventivo
+                preventivo={ordine.dettaglio_preventivo}
+                urgenzaRichiesta={Boolean(ordine.urgenza_richiesta)}
+                avviso={
+                  ordine.stato === 'richiesto'
+                    ? 'Preventivo indicativo, soggetto a conferma da parte di FormaWeb. L’importo da pagare è quello confermato da FormaWeb.'
+                    : 'Stima iniziale della tua richiesta. L’importo da pagare è quello confermato da FormaWeb.'
+                }
+              />
+            </div>
+          </div>
+        )}
+
         <div className="card p-5 sm:p-6">
           <h2 className="font-semibold text-slate-900">Cosa hai richiesto</h2>
           <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
@@ -243,6 +270,9 @@ export default function Ordine() {
             <Dato etichetta="Pagine" valore={ordine.pagine} />
             <Dato etichetta="Dominio" valore={ordine.dominio} />
             <Dato etichetta="Funzionalità" valore={ordine.funzionalita.join(', ')} />
+            {ordine.scadenza && <Dato etichetta="Consegna" valore={ordine.scadenza} />}
+            {ordine.budget && <Dato etichetta="Budget indicato" valore={ordine.budget} />}
+            {Boolean(ordine.n_allegati) && <Dato etichetta="File allegati" valore={String(ordine.n_allegati)} />}
           </dl>
           <p className="mt-4 text-sm whitespace-pre-line text-slate-700">{ordine.descrizione}</p>
         </div>

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthProvider'
 import { RedirectRuolo, RichiedeGestore, RichiedeLogin } from './auth/guards'
 import { AreaLayout } from './components/AreaLayout'
@@ -49,6 +49,7 @@ export default function App() {
               <Route path="portfolio/:id" element={<ProgettoDettaglio />} />
               <Route path="prezzi" element={<PrezziPubblici />} />
               <Route path="sito-su-misura" element={<SitoSuMisura />} />
+              <Route path="acquista-sito-su-misura" element={<Navigate to="/sito-su-misura" replace />} />
               <Route path="ordine/:token" element={<Ordine />} />
               <Route path="*" element={<NotFound />} />
             </Route>

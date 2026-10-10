@@ -1,12 +1,15 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useAuth } from '../../../auth/AuthProvider'
 import { Icon } from '../../../components/Icon'
+import { RiepilogoPreventivo } from '../../../components/RiepilogoPreventivo'
 import { TestoContratto } from '../../../components/TestoContratto'
 import { Caricamento, IntestazionePagina, MessaggioErrore, MessaggioSuccesso, Modale, Spinner, TabellaScroll, Vuoto } from '../../../components/ui'
+import { BUCKET_ALLEGATI } from '../../../lib/configuratore'
 import { formatData, formatDataOra, formatEuro, parseNumero } from '../../../lib/format'
 import { ETICHETTE_STATO_ORDINE, linkOrdine, scaricaContratto, type OrdineSito, type StatoOrdine } from '../../../lib/ordini'
 import { messaggioErrore, supabase } from '../../../lib/supabase'
 import { esegui, useQuery } from '../../../lib/useQuery'
+import { AdminListinoConfiguratore } from './AdminListinoConfiguratore'
 
 const COLORI_STATO: Record<StatoOrdine, string> = {
   richiesto: 'bg-amber-50 text-amber-700',
@@ -35,9 +38,18 @@ function Dato({ etichetta, valore }: { etichetta: string; valore: string }) {
   )
 }
 
+const virgola = (n: number) => String(n).replace('.', ',')
+
 function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato: () => void }) {
   const modificabile = ordine.stato === 'richiesto' || ordine.stato === 'preventivo_inviato'
-  const [prezzo, setPrezzo] = useState(ordine.prezzo != null ? String(ordine.prezzo).replace('.', ',') : '')
+  const det = ordine.dettaglio_preventivo
+  const [urgenzaOk, setUrgenzaOk] = useState(ordine.urgenza_confermata)
+  // Totale suggerito dal configuratore (con l'urgenza solo se la confermi): è un aiuto, il prezzo lo decidi tu
+  const suggerito = (conUrgenza: boolean) => (det ? Number(det.subtotale) + (conUrgenza ? Number(det.urgenza_importo) : 0) : null)
+  // Prezzo iniziale: quello già confermato; altrimenti il suggerimento del listino, ma solo se è completo
+  // (le richieste «da approvare a mano» partono vuote, così il prezzo lo decidi tu).
+  const prezzoIniziale = ordine.prezzo != null ? virgola(ordine.prezzo) : det && !det.approvazione_manuale ? virgola(suggerito(ordine.urgenza_confermata) ?? 0) : ''
+  const [prezzo, setPrezzo] = useState(prezzoIniziale)
   const [acconto, setAcconto] = useState(ordine.acconto != null ? String(ordine.acconto).replace('.', ',') : '')
   const [giorni, setGiorni] = useState(ordine.consegna_giorni != null ? String(ordine.consegna_giorni) : '')
   const [nota, setNota] = useState(ordine.nota_preventivo)
@@ -71,6 +83,16 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
           consegna_giorni: g,
           nota_preventivo: nota,
           nota_interna: notaInterna,
+          ...(det
+            ? {
+                urgenza_confermata: urgenzaOk,
+                dettaglio_preventivo: {
+                  ...det,
+                  urgenza_confermata: urgenzaOk,
+                  totale: Math.round(((suggerito(urgenzaOk) ?? 0) + Number.EPSILON) * 100) / 100,
+                },
+              }
+            : {}),
           ...(nuovoStato ? { stato: nuovoStato } : {}),
           ...(nuovoStato === 'preventivo_inviato' ? { preventivo_il: new Date().toISOString() } : {}),
         })
@@ -91,6 +113,24 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
       const { data, error } = await supabase.rpc('admin_anteprima_contratto', { p_id: ordine.id })
       if (error) throw error
       setAnteprima(String(data))
+    } catch (e) {
+      setErrore(messaggioErrore(e))
+    }
+  }
+
+  function cambiaUrgenza(conferma: boolean) {
+    // Se il prezzo è ancora quello suggerito, lo aggiorna insieme all'urgenza; se l'hai scritto tu, non lo tocca
+    const precedente = suggerito(urgenzaOk)
+    if (precedente != null && prezzo.trim() === virgola(precedente)) setPrezzo(virgola(suggerito(conferma)!))
+    setUrgenzaOk(conferma)
+  }
+
+  async function apriAllegato(path: string) {
+    setErrore(null)
+    try {
+      const { data, error } = await supabase.storage.from(BUCKET_ALLEGATI).createSignedUrl(path, 120)
+      if (error) throw error
+      window.open(data.signedUrl, '_blank', 'noopener')
     } catch (e) {
       setErrore(messaggioErrore(e))
     }
@@ -140,6 +180,40 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
         )}
       </div>
 
+      {det && (
+        <div className="space-y-3 rounded-xl border border-slate-200 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold text-slate-900">Configurazione scelta dal cliente</h3>
+            {ordine.approvazione_manuale && (
+              <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">Richiede approvazione manuale</span>
+            )}
+          </div>
+          <RiepilogoPreventivo preventivo={{ ...det, urgenza_confermata: urgenzaOk }} urgenzaRichiesta={ordine.urgenza_richiesta} />
+          <p className="text-xs text-slate-500">
+            È una stima calcolata dal listino. Il cliente paga <strong>solo l&apos;importo che confermi nel Preventivo qui sotto</strong>.
+          </p>
+          {ordine.urgenza_richiesta && modificabile && (
+            <label className="flex cursor-pointer items-center gap-2.5 text-sm text-slate-700">
+              <input type="checkbox" className="h-4 w-4 accent-brand-600" checked={urgenzaOk} onChange={(e) => cambiaUrgenza(e.target.checked)} />
+              Confermo la consegna urgente (+{det.urgenza_percentuale}%, circa {formatEuro(det.urgenza_importo)})
+            </label>
+          )}
+        </div>
+      )}
+
+      {ordine.allegati?.length > 0 && (
+        <div className="space-y-2 rounded-xl border border-slate-200 p-4">
+          <h3 className="font-semibold text-slate-900">Materiali caricati dal cliente</h3>
+          <div className="flex flex-wrap gap-2">
+            {ordine.allegati.map((path, i) => (
+              <button key={path} type="button" className="btn-secondary py-1.5 text-xs" onClick={() => apriAllegato(path)}>
+                <Icon name="file" className="h-4 w-4" /> {path.split('/').pop()?.replace(/^[0-9a-f]{8}-/, '') ?? `File ${i + 1}`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {ordine.stato === 'pagato' && (
         <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
           <p>
@@ -165,6 +239,14 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
         }}
       >
         <h3 className="font-semibold text-slate-900">Preventivo</h3>
+        {ordine.stato === 'richiesto' && (
+          <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
+            {ordine.approvazione_manuale
+              ? 'Questa richiesta richiede approvazione manuale: finché non invii il preventivo il cliente non può pagare. Inviandolo confermi l’importo.'
+              : 'Finché non invii il preventivo il cliente non può pagare. Inviandolo confermi l’importo.'}
+            {det && <> Totale suggerito dal listino: <strong>{formatEuro(suggerito(urgenzaOk))}</strong>{det.approvazione_manuale ? ' (parziale: contiene voci «da» o su preventivo)' : ''}.</>}
+          </p>
+        )}
         <fieldset disabled={!modificabile} className="grid gap-4 sm:grid-cols-3">
           <label className="block">
             <span className="label">Prezzo totale (€)</span>
@@ -287,7 +369,7 @@ function ModelloContratto() {
 
 export default function AdminPreventivi() {
   const { isAdmin } = useAuth()
-  const [scheda, setScheda] = useState<'ordini' | 'modello'>('ordini')
+  const [scheda, setScheda] = useState<'ordini' | 'listino' | 'modello'>('ordini')
   const [filtro, setFiltro] = useState<StatoOrdine | ''>('richiesto')
   const [apertoId, setApertoId] = useState<string | null>(null)
 
@@ -311,15 +393,17 @@ export default function AdminPreventivi() {
       <IntestazionePagina titolo="Preventivi e ordini" sottotitolo="Richieste dei clienti dal sito: rispondi con il preventivo, il cliente accetta il contratto e paga." />
 
       <div className="mb-5 flex gap-2">
-        {(['ordini', 'modello'] as const).map((s) => (
+        {(['ordini', 'listino', 'modello'] as const).map((s) => (
           <button key={s} onClick={() => setScheda(s)} className={scheda === s ? 'btn-primary' : 'btn-secondary'}>
-            {s === 'ordini' ? 'Ordini' : 'Modello contratto'}
+            {s === 'ordini' ? 'Ordini' : s === 'listino' ? 'Listino prezzi e servizi' : 'Modello contratto'}
           </button>
         ))}
       </div>
 
       {scheda === 'modello' ? (
         <ModelloContratto />
+      ) : scheda === 'listino' ? (
+        <AdminListinoConfiguratore />
       ) : (
         <>
           <div className="mb-4 flex flex-wrap gap-2">

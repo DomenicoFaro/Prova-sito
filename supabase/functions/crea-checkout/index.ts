@@ -25,6 +25,10 @@ Deno.serve(async (req) => {
     if (!o) return json({ error: 'Ordine non trovato.' }, 404)
     if (o.stato === 'pagato') return json({ error: 'Ordine già pagato.' }, 409)
     if (o.stato !== 'preventivo_inviato' || !o.prezzo) return json({ error: 'Il preventivo non è ancora disponibile.' }, 409)
+    // Richiesta in verifica manuale: si paga solo dopo che FormaWeb ha confermato l'importo (preventivo_il lo imposta l'admin)
+    if (o.approvazione_manuale && !o.preventivo_il) {
+      return json({ error: "Il pagamento sarà disponibile appena FormaWeb avrà confermato l'importo." }, 409)
+    }
 
     const importo = Math.round(Number(o.acconto ?? o.prezzo) * 100)
     if (!(importo >= 50)) return json({ error: 'Importo non valido.' }, 400)

@@ -67,7 +67,22 @@ Il pagamento usa **Stripe**: nessun canone mensile, solo commissione sulle vendi
    Senza Resend il cliente vede e scarica comunque il contratto dalla sua pagina.
    **Incassi e progetto automatico**: esegui anche [`supabase/incassi.sql`](supabase/incassi.sql) (dopo `ordini.sql`). Quando un cliente paga, il sito entra da solo tra i **Progetti** «in lavorazione» con il prezzo pieno e, come *incassato*, solo l'acconto realmente pagato. Il Riepilogo (solo admin) separa **guadagni già fatti** (siti consegnati), **in preparazione** (siti da fare), **già incassato** e **ancora da incassare**; il campo «Già incassato» si aggiorna dal form del progetto.
    **Prezzi pubblici**: esegui [`supabase/prezzi_pubblici.sql`](supabase/prezzi_pubblici.sql) (dopo `soci.sql`). La pagina `/prezzi` mostra a tutti il listino diviso in **Siti web**, **Servizi** e **Abbonamenti**; lo gestisci da *Area riservata → Prezzi* (le voci «nascoste» non compaiono sul sito pubblico).
+   **Configuratore «Acquista il tuo sito»** (`/sito-su-misura`, anche `/acquista-sito-su-misura`): modulo a 5 passaggi (dati → sito → personalizzazione → preventivo → conferma) con preventivo indicativo in tempo reale.
+   - Esegui [`supabase/configuratore.sql`](supabase/configuratore.sql) **prima** di pubblicare il nuovo sito, **dopo** `ordini.sql`, `incassi.sql` e `prezzi_pubblici.sql`, e **non rieseguire `ordini.sql` dopo** (ripristinerebbe le vecchie funzioni). Lo script si può rieseguire: i prezzi che hai già modificato non vengono toccati.
+   - Ripubblica la funzione di pagamento: `npx supabase functions deploy crea-checkout`.
+   - Il prezzo indicativo viene **ricalcolato dal server** con il listino; i numeri che arrivano dal browser sono ignorati. Il **pagamento resta bloccato** finché non confermi l'importo da *Area riservata → Preventivi → Apri → Invia preventivo*; le richieste con voci «da» o «su preventivo» sono segnate **«Richiede approvazione manuale»**.
+   - **Modifichi tu prezzi, descrizioni, supplementi, servizi esterni, % di urgenza e avvisi** da *Area riservata → Preventivi → Listino prezzi e servizi* (solo admin). Le pagine incluse in ogni tipologia e le funzioni già comprese sono valori di partenza da controllare lì.
+   - I file allegati dal cliente stanno in un bucket **privato** (`richieste-allegati`, max 5 MB, immagini/PDF/Word/testo); li scarichi dal dettaglio dell'ordine con un link temporaneo.
+   - La consegna urgente (+20%) non entra nel totale finché non la confermi tu sull'ordine.
 7. Prova tutto con la carta di test `4242 4242 4242 4242` (chiavi `sk_test_`), poi passa alle chiavi live.
+
+### Test automatici
+```bash
+npm run test:db   # database: calcolo prezzi, permessi, allegati, prezzi manipolati (Postgres in memoria, nessun database reale)
+npm run test:ui   # browser (Edge/Chrome, EDGE_PATH se serve): modulo, area admin, tutte le pagine — con Supabase simulato
+npm test          # entrambi
+```
+Non sostituiscono una prova vera: **Stripe, le Edge Functions, le email e i permessi reali di Supabase Storage vanno provati con un ordine di prova.**
 
 > Il sito è impostato come privato (`noindex` in `index.html` e `public/robots.txt`). Per far trovare la pagina d'acquisto dai clienti su Google, rimuovi quei blocchi.
 
