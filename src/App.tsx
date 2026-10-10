@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthProvider'
 import { RedirectRuolo, RichiedeGestore, RichiedeLogin } from './auth/guards'
 import { AreaLayout } from './components/AreaLayout'
@@ -11,6 +11,7 @@ import Home from './pages/public/Home'
 const Portfolio = lazy(() => import('./pages/public/Portfolio'))
 const ProgettoDettaglio = lazy(() => import('./pages/public/ProgettoDettaglio'))
 const SitoSuMisura = lazy(() => import('./pages/public/SitoSuMisura'))
+const ProvaIlTuoSito = lazy(() => import('./pages/public/ProvaIlTuoSito'))
 const Ordine = lazy(() => import('./pages/public/Ordine'))
 const NotFound = lazy(() => import('./pages/public/NotFound'))
 const Login = lazy(() => import('./pages/auth/Login'))
@@ -46,11 +47,8 @@ export default function App() {
               <Route index element={<Home />} />
               <Route path="portfolio" element={<Portfolio />} />
               <Route path="portfolio/:id" element={<ProgettoDettaglio />} />
-              {/* Il listino prezzi è solo per chi ha un account: dal pannello (Area riservata → Prezzi) */}
-              <Route path="prezzi" element={<Navigate to="/area/prezzi" replace />} />
-              <Route path="sito-su-misura" element={<SitoSuMisura key="standard" />} />
-              <Route path="prova-un-mese" element={<SitoSuMisura key="prova" modo="prova" />} />
-              <Route path="acquista-sito-su-misura" element={<Navigate to="/sito-su-misura" replace />} />
+              <Route path="sito-su-misura" element={<SitoSuMisura />} />
+              <Route path="prova-il-tuo-sito" element={<ProvaIlTuoSito />} />
               <Route path="ordine/:token" element={<Ordine />} />
               <Route path="*" element={<NotFound />} />
             </Route>

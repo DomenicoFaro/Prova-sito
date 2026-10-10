@@ -1,2 +1,9 @@
 User-agent: *
-Disallow: /
+Allow: /
+Disallow: /area
+Disallow: /login
+Disallow: /password-dimenticata
+Disallow: /reimposta-password
+Disallow: /ordine/
+
+Sitemap: https://formaweb.com/sitemap.xml

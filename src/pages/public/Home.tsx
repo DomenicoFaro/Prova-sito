@@ -31,19 +31,30 @@ export default function Home() {
             <img src="/logo-completo.jpg" alt={SITO.titolo} width={900} height={366} className="mx-auto w-full max-w-2xl" />
           </h1>
           <div className="dissolvenza mt-4 flex flex-col justify-center gap-3 sm:flex-row" style={{ animationDelay: '0.7s' }}>
-            <Link to="/portfolio" className="btn-primary px-6 py-3 text-base">
-              Vai al portfolio <Icon name="arrowRight" className="h-4 w-4" />
+            <Link to="/prova-il-tuo-sito" className="btn-primary px-6 py-3 text-base">
+              Prova il tuo sito <Icon name="arrowRight" className="h-4 w-4" />
             </Link>
             <Link to="/sito-su-misura" className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
               <Icon name="cart" className="h-4 w-4" /> Acquista il tuo sito
             </Link>
-            <Link to="/prova-un-mese" className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
-              <Icon name="clock" className="h-4 w-4" /> Prova un mese
+            <Link to="/portfolio" className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
+              Portfolio
+            </Link>
+            <Link to="/area/prezzi" className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
+              <Icon name="euro" className="h-4 w-4" /> Prezzi
             </Link>
             <Link to={session ? '/area' : '/login'} className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
               <Icon name="lock" className="h-4 w-4" /> Area riservata
             </Link>
           </div>
+        </div>
+        <div className="relative container-sito pb-6 text-center">
+          <p className="mx-auto max-w-2xl text-base text-slate-300">
+            Forma Web realizza siti web su misura per attività e professionisti. Prova il tuo sito e acquistalo online.
+          </p>
+          <p className="mx-auto mt-3 inline-block rounded-full bg-white/10 px-4 py-1.5 text-sm text-sky-300">
+            Abbiamo cambiato dominio: ora siamo su <strong>formaweb.com</strong>
+          </p>
         </div>
         <div className="relative h-24 bg-gradient-to-b from-black to-white sm:h-32" aria-hidden="true" />
       </section>

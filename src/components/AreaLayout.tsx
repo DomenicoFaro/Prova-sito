@@ -85,7 +85,7 @@ export function AreaLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Seo titolo="Area riservata" />
+      <Seo titolo="Area riservata" noindex />
       {/* Sidebar desktop */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 bg-black lg:block">{sidebar}</aside>
 
