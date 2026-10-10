@@ -108,7 +108,10 @@ export default function AdminProgetti() {
                           </div>
                         </div>
                       </td>
-                      <td><BadgeStatoProgetto stato={p.stato} /></td>
+                      <td>
+                        <BadgeStatoProgetto stato={p.stato} />
+                        {isAdmin && p.prova_fino_al && <p className="mt-1 text-xs font-medium whitespace-nowrap text-brand-700">In prova fino al {formatData(p.prova_fino_al)}</p>}
+                      </td>
                       <td className="whitespace-nowrap">{formatData(p.data_consegna)}</td>
                       <td className="text-right whitespace-nowrap tabular-nums">{formatEuro(p.prezzo_totale)}</td>
                       {isAdmin && (

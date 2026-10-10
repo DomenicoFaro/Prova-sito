@@ -50,7 +50,12 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
   // (le richieste «da approvare a mano» partono vuote, così il prezzo lo decidi tu).
   const prezzoIniziale = ordine.prezzo != null ? virgola(ordine.prezzo) : det && !det.approvazione_manuale ? virgola(suggerito(ordine.urgenza_confermata) ?? 0) : ''
   const [prezzo, setPrezzo] = useState(prezzoIniziale)
-  const [acconto, setAcconto] = useState(ordine.acconto != null ? String(ordine.acconto).replace('.', ',') : '')
+  const inProva = ordine.tipo_ordine === 'prova'
+  // Per la prova l'acconto suggerito è il mese di prova (100 € + extra scontati); il prezzo è quello pieno del sito
+  const accontoIniziale = ordine.acconto != null ? virgola(ordine.acconto) : inProva && det?.prova && !det.approvazione_manuale ? virgola(det.prova.da_pagare_ora) : ''
+  const [acconto, setAcconto] = useState(accontoIniziale)
+  const [contanti, setContanti] = useState<string | null>(null) // null = non ancora modificato: si propone il valore di default
+  const [confermaContanti, setConfermaContanti] = useState(false)
   const [giorni, setGiorni] = useState(ordine.consegna_giorni != null ? String(ordine.consegna_giorni) : '')
   const [nota, setNota] = useState(ordine.nota_preventivo)
   const [notaInterna, setNotaInterna] = useState(ordine.nota_interna)
@@ -99,6 +104,48 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
         .eq('id', ordine.id)
       if (error) throw error
       setEsito(nuovoStato === 'preventivo_inviato' ? 'Preventivo inviato: copia il link e mandalo al cliente.' : 'Salvato.')
+      onSalvato()
+    } catch (e) {
+      setErrore(messaggioErrore(e))
+    } finally {
+      setAttesa(false)
+    }
+  }
+
+  /** Campi del preventivo da salvare (stessi per «Invia preventivo» e «Pagato in contanti»). */
+  const campiPreventivo = (p: number | null, g: number | null) => ({
+    prezzo: p,
+    consegna_giorni: g,
+    nota_preventivo: nota,
+    nota_interna: notaInterna,
+    ...(det
+      ? {
+          urgenza_confermata: urgenzaOk,
+          dettaglio_preventivo: { ...det, urgenza_confermata: urgenzaOk, totale: Math.round(((suggerito(urgenzaOk) ?? 0) + Number.EPSILON) * 100) / 100 },
+        }
+      : {}),
+  })
+
+  // Quanto proporre come incasso in contanti: l'acconto (o il mese di prova) se c'è, altrimenti tutto il prezzo
+  const importoContanti = contanti ?? (acconto.trim() !== '' ? acconto : prezzo)
+
+  async function pagatoContanti() {
+    setErrore(null)
+    setEsito(null)
+    const p = parseNumero(prezzo)
+    const g = giorni.trim() === '' ? null : Number(giorni)
+    const imp = parseNumero(importoContanti)
+    if (!(p > 0)) return setErrore('Inserisci il prezzo del sito.')
+    if (g != null && (!Number.isInteger(g) || g < 1)) return setErrore('Giorni di consegna non validi (numero intero).')
+    if (!(imp > 0) || imp > p) return setErrore("L'importo in contanti deve essere maggiore di 0 e al massimo il prezzo.")
+    setAttesa(true)
+    try {
+      const { error: e1 } = await supabase.from('ordini_siti').update(campiPreventivo(p, g)).eq('id', ordine.id)
+      if (e1) throw e1
+      const { error: e2 } = await supabase.rpc('admin_segna_pagato_contanti', { p_ordine: ordine.id, p_importo: imp })
+      if (e2) throw e2
+      setConfermaContanti(false)
+      setEsito('Pagamento in contanti registrato: l\'ordine è pagato e il progetto è stato creato.')
       onSalvato()
     } catch (e) {
       setErrore(messaggioErrore(e))
@@ -216,10 +263,23 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
 
       {ordine.stato === 'pagato' && (
         <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
-          <p>
-            Pagato {formatEuro(ordine.importo_pagato)} il {ordine.pagato_il ? formatDataOra(ordine.pagato_il) : '—'}. Contratto accettato da{' '}
-            <strong>{ordine.firmatario}</strong> il {ordine.accettato_il ? formatDataOra(ordine.accettato_il) : '—'} (IP {ordine.accettato_ip || '—'}).
-          </p>
+          {ordine.metodo_pagamento === 'contanti' ? (
+            <p>
+              Pagato <strong>in contanti</strong> {formatEuro(ordine.importo_pagato)} il {ordine.pagato_il ? formatDataOra(ordine.pagato_il) : '—'}. Il contratto compilato
+              qui sotto va stampato e fatto firmare al cliente.
+            </p>
+          ) : (
+            <p>
+              Pagato con carta {formatEuro(ordine.importo_pagato)} il {ordine.pagato_il ? formatDataOra(ordine.pagato_il) : '—'}. Contratto accettato da{' '}
+              <strong>{ordine.firmatario}</strong> il {ordine.accettato_il ? formatDataOra(ordine.accettato_il) : '—'} (IP {ordine.accettato_ip || '—'}).
+            </p>
+          )}
+          {inProva && ordine.prova_fino_al && (
+            <p>
+              <strong>Prova di un mese fino al {formatData(ordine.prova_fino_al)}.</strong> Resto da incassare dopo il mese, se il sito è piaciuto:{' '}
+              <strong>{formatEuro(ordine.saldo_dopo_prova)}</strong>. Quando lo ricevi (anche in contanti) lo registri dal progetto, in «Registra incasso».
+            </p>
+          )}
           {ordine.contratto_finale && (
             <>
               <button className="btn-secondary text-xs" onClick={() => scaricaContratto(ordine.contratto_finale!, `Contratto ${numeroOrdine(ordine)}`)}>
@@ -244,16 +304,19 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
             {ordine.approvazione_manuale
               ? 'Questa richiesta richiede approvazione manuale: finché non invii il preventivo il cliente non può pagare. Inviandolo confermi l’importo.'
               : 'Finché non invii il preventivo il cliente non può pagare. Inviandolo confermi l’importo.'}
-            {det && <> Totale suggerito dal listino: <strong>{formatEuro(suggerito(urgenzaOk))}</strong>{det.approvazione_manuale ? ' (parziale: contiene voci «da» o su preventivo)' : ''}.</>}
+            {det && !inProva && <> Totale suggerito dal listino: <strong>{formatEuro(suggerito(urgenzaOk))}</strong>{det.approvazione_manuale ? ' (parziale: contiene voci «da» o su preventivo)' : ''}.</>}
+            {det && inProva && det.prova && (
+              <> Prova di un mese: prezzo pieno suggerito <strong>{formatEuro(det.subtotale)}</strong>, da pagare ora <strong>{formatEuro(det.prova.da_pagare_ora)}</strong> (nel campo «Da pagare ora»), resto dopo il mese <strong>{formatEuro(det.prova.resto_dopo)}</strong>{det.approvazione_manuale ? ' (parziale: contiene voci «da»)' : ''}.</>
+            )}
           </p>
         )}
         <fieldset disabled={!modificabile} className="grid gap-4 sm:grid-cols-3">
           <label className="block">
-            <span className="label">Prezzo totale (€)</span>
+            <span className="label">{inProva ? 'Prezzo pieno del sito (€)' : 'Prezzo totale (€)'}</span>
             <input value={prezzo} onChange={(e) => setPrezzo(e.target.value)} inputMode="decimal" className="input" placeholder="600" />
           </label>
           <label className="block">
-            <span className="label">Da pagare ora (€)</span>
+            <span className="label">{inProva ? 'Da pagare ora: mese di prova (€)' : 'Da pagare ora (€)'}</span>
             <input value={acconto} onChange={(e) => setAcconto(e.target.value)} inputMode="decimal" className="input" placeholder="Vuoto = tutto" />
           </label>
           <label className="block">
@@ -298,6 +361,48 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
         </div>
       </form>
 
+      {modificabile && (
+        <div className="space-y-3 rounded-xl border border-slate-200 p-4">
+          <h3 className="font-semibold text-slate-900">Pagamento in contanti</h3>
+          <p className="text-xs text-slate-600">
+            Se il cliente ti paga di persona, registralo qui: l&apos;ordine risulta pagato come con la carta, si crea il progetto e il contratto compilato
+            è pronto da stampare e far firmare.{' '}
+            {inProva
+              ? 'Per la prova inserisci l\u2019importo del mese di prova: il resto dopo il mese lo registri dal progetto.'
+              : 'Se ti ha dato solo un acconto, inserisci quell\u2019importo: il resto lo registri dal progetto.'}
+          </p>
+          <label className="block max-w-xs">
+            <span className="label">Importo ricevuto (€)</span>
+            <input
+              value={importoContanti}
+              onChange={(e) => {
+                setContanti(e.target.value)
+                setConfermaContanti(false)
+              }}
+              inputMode="decimal"
+              className="input"
+            />
+          </label>
+          {!confermaContanti ? (
+            <button type="button" className="btn-secondary" disabled={attesa} onClick={() => setConfermaContanti(true)}>
+              <Icon name="wallet" className="h-4 w-4" /> Segna come pagato in contanti
+            </button>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+              <span>
+                Confermi di aver ricevuto <strong>{formatEuro(parseNumero(importoContanti) || 0)}</strong> in contanti?
+              </span>
+              <button type="button" className="btn-primary py-1.5" disabled={attesa} onClick={pagatoContanti}>
+                {attesa && <Spinner className="h-4 w-4" />} Sì, registra
+              </button>
+              <button type="button" className="btn-ghost py-1.5" disabled={attesa} onClick={() => setConfermaContanti(false)}>
+                Annulla
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="space-y-2 rounded-xl bg-slate-50 p-4 text-sm">
         <p className="font-semibold text-slate-900">Link del cliente</p>
         <p className="break-all text-slate-600">{link}</p>
@@ -319,8 +424,10 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
 }
 
 function ModelloContratto() {
-  const { dati, caricamento, errore, ricarica } = useQuery(async () =>
-    (await esegui<{ testo: string }[]>(supabase.from('ordini_contratto').select('testo').eq('id', 1)))[0]?.testo ?? '',
+  const [modello, setModello] = useState<1 | 2>(1)
+  const { dati, caricamento, errore, ricarica } = useQuery(
+    async () => (await esegui<{ testo: string }[]>(supabase.from('ordini_contratto').select('testo').eq('id', modello)))[0]?.testo ?? '',
+    [modello],
   )
   const [bozza, setBozza] = useState<string | null>(null)
   const [attesa, setAttesa] = useState(false)
@@ -333,7 +440,7 @@ function ModelloContratto() {
     setOk(false)
     setAttesa(true)
     try {
-      const { error } = await supabase.from('ordini_contratto').upsert({ id: 1, testo, updated_at: new Date().toISOString() })
+      const { error } = await supabase.from('ordini_contratto').upsert({ id: modello, testo, updated_at: new Date().toISOString() })
       if (error) throw error
       setOk(true)
       setBozza(null)
@@ -350,12 +457,33 @@ function ModelloContratto() {
 
   return (
     <div className="card space-y-4 p-5">
+      <div className="flex flex-wrap gap-2">
+        {([1, 2] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => {
+              setModello(m)
+              setBozza(null)
+              setOk(false)
+            }}
+            className={modello === m ? 'btn-primary' : 'btn-secondary'}
+          >
+            {m === 1 ? 'Contratto standard' : 'Contratto «Prova un mese»'}
+          </button>
+        ))}
+      </div>
+      {modello === 2 && (
+        <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
+          È una bozza di partenza: fai controllare il testo (recesso, rimborsi, cosa succede se il cliente non decide) prima di usarlo con i clienti.
+        </p>
+      )}
       <p className="text-sm text-slate-600">
         È il contratto che il cliente legge prima di pagare e che riceve compilato dopo il pagamento. Incolla qui il tuo testo. Usa{' '}
         <code># Titolo</code> per i titoli; una riga = un paragrafo.
       </p>
       <p className="rounded-xl bg-slate-50 p-3 text-xs break-words text-slate-600">
-        Segnaposto sostituiti in automatico: {'{{cliente_nome}} {{cliente_codice}} {{cliente_indirizzo}} {{cliente_email}} {{cliente_telefono}} {{numero_ordine}} {{data}} {{tipo_sito}} {{nome_attivita}} {{pagine}} {{funzionalita}} {{lingue}} {{dominio}} {{descrizione}} {{prezzo}} {{acconto}} {{saldo}} {{consegna_giorni}} {{firmatario}}'}
+        Segnaposto sostituiti in automatico: {'{{cliente_nome}} {{cliente_codice}} {{cliente_indirizzo}} {{cliente_email}} {{cliente_telefono}} {{numero_ordine}} {{data}} {{tipo_sito}} {{nome_attivita}} {{pagine}} {{funzionalita}} {{lingue}} {{dominio}} {{descrizione}} {{prezzo}} {{acconto}} {{saldo}} {{consegna_giorni}} {{firmatario}} {{totale_sito}} {{prova_fino_al}}'}
       </p>
       <textarea value={testo} onChange={(e) => setBozza(e.target.value)} rows={22} className="input font-mono text-xs" />
       {err && <MessaggioErrore>{err}</MessaggioErrore>}
@@ -447,11 +575,15 @@ export default function AdminPreventivi() {
                           <p className="font-medium text-slate-900">{o.cliente_nome}</p>
                           <p className="text-xs text-slate-500">{o.cliente_email}</p>
                         </td>
-                        <td>{o.nome_attivita || o.tipo_sito || '—'}</td>
+                        <td>
+                          {o.nome_attivita || o.tipo_sito || '—'}
+                          {o.tipo_ordine === 'prova' && <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">Prova</span>}
+                        </td>
                         <td className="whitespace-nowrap">{formatData(o.created_at)}</td>
                         <td className="whitespace-nowrap tabular-nums">{o.prezzo != null ? formatEuro(o.prezzo) : '—'}</td>
                         <td>
                           <BadgeOrdine stato={o.stato} />
+                          {o.stato === 'pagato' && o.metodo_pagamento === 'contanti' && <span className="ml-1.5 text-xs text-slate-500">contanti</span>}
                         </td>
                         <td className="text-right">
                           <button className="btn-secondary px-3 py-1.5 text-xs" onClick={() => setApertoId(o.id)}>

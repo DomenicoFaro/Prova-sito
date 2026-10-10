@@ -332,17 +332,259 @@ await prova('Contratto compilato include i dati del configuratore (tipo, pagine,
     if (!c.includes(s)) throw new Error(`manca "${s}" nel contratto`)
 })
 
-console.log('\nPrezzi pubblici (modifica precedente, prezzi_pubblici.sql)')
+console.log('\nListino prezzi interno (solo area riservata, NON pubblico)')
+await comeSuper()
 await db.exec(`insert into public.prezzi (tipo, nome, prezzo, periodicita, attivo) values ('abbonamento','Assistenza',30,'al mese',true), ('servizio','Nascosto',10,'',false), ('sito','Vetrina',300,'',true);`)
 await comeAnon()
-await prova('Il pubblico vede solo le voci attive, anche gli abbonamenti', async () => {
-  const r = (await db.query(`select tipo from public.prezzi order by tipo`)).rows.map((x) => x.tipo)
-  eq(r, ['abbonamento', 'sito'])
+await prova('I visitatori NON possono leggere il listino prezzi', async () => {
+  const msg = await errore(`select * from public.prezzi`, [])
+  if (!/permission denied/.test(msg)) throw new Error(msg)
 })
-await prova('Il pubblico non può modificare il listino pubblico', async () => {
+await prova('I visitatori non possono modificarlo', async () => {
   const msg = await errore(`update public.prezzi set prezzo = 1`, [])
   if (!/permission denied/.test(msg)) throw new Error(msg)
 })
+await comeUtente(COLLAB)
+await prova('Un collaboratore legge solo le voci attive (siti e abbonamenti)', async () => {
+  const r = (await db.query(`select tipo from public.prezzi order by tipo`)).rows.map((x) => x.tipo)
+  eq(r, ['abbonamento', 'sito'])
+})
+await prova('Un collaboratore non può modificare il listino (0 righe toccate)', async () => {
+  eq((await db.query(`update public.prezzi set prezzo = 1`)).affectedRows, 0)
+})
+await comeUtente(ADMIN)
+await prova("L'admin gestisce il listino e può usare il tipo «abbonamento»", async () => {
+  await db.query(`insert into public.prezzi (tipo, nome, prezzo) values ('abbonamento','Hosting',9)`)
+  eq((await db.query(`select count(*)::int n from public.prezzi where tipo='abbonamento'`)).rows[0].n, 2)
+})
+
+console.log('\nProva un mese: calcolo')
+await comeAnon()
+const prova1 = (p) => calcola({ ...p, prova: true })
+await prova('Ristorante, 6 pagine, modulo + 2 lingue: paghi 100 + 30% degli extra = 200,50 €; resto 533,50 €', async () => {
+  const r = await prova1({ tipologia: 'ristorante_bar', pagine: 6, extra: { modulo_contatti: 1, lingua_aggiuntiva: 2 } })
+  eq(Number(r.prova.prezzo_base), 100)
+  eq(Number(r.prova.sconto_percentuale), 70)
+  eq(Number(r.prova.extra_pieno), 335)
+  eq(Number(r.prova.extra_scontati), 100.5)
+  eq(Number(r.prova.risparmio), 234.5)
+  eq(Number(r.prova.da_pagare_ora), 200.5)
+  eq(Number(r.prova.resto_dopo), 533.5)
+  eq(Number(r.prova.totale_sito), 734)
+  eq(Number(r.totale), 734)
+})
+await prova('Senza extra la prova costa solo 100 €; il resto è il prezzo pieno meno 100', async () => {
+  const r = await prova1({ tipologia: 'sito_vetrina', pagine: 3 })
+  eq(Number(r.prova.da_pagare_ora), 100)
+  eq(Number(r.prova.resto_dopo), 199)
+  eq(Number(r.prova.risparmio), 0)
+})
+await prova('Il totale pagato (prova + resto) è SEMPRE il prezzo pieno del sito', async () => {
+  for (const [t, pag, ex] of [['landing_page', 1, {}], ['hotel_bnb', 9, { seo_base: 1, newsletter: 1, lingua_aggiuntiva: 3 }], ['ecommerce', 6, { pagamenti_online: 1, sistema_recensioni: 1 }]]) {
+    const r = await prova1({ tipologia: t, pagine: pag, extra: ex })
+    eq(Math.round((Number(r.prova.da_pagare_ora) + Number(r.prova.resto_dopo)) * 100) / 100, Number(r.prova.totale_sito), t)
+  }
+})
+await prova('Funzionalità già incluse nel sito non si scontano né si pagano (E-commerce + Pagamenti online)', async () => {
+  const r = await prova1({ tipologia: 'ecommerce', pagine: 6, extra: { pagamenti_online: 1 } })
+  eq(Number(r.prova.extra_pieno), 0)
+  eq(Number(r.prova.da_pagare_ora), 100)
+})
+await prova('Il calcolo normale non ha il blocco prova', async () => {
+  eq((await calcola({ tipologia: 'sito_vetrina', pagine: 3 })).prova, null)
+})
+await prova("L'urgenza non si applica alla prova (anche se confermata)", async () => {
+  const r = await prova1({ tipologia: 'sito_vetrina', pagine: 3, urgenza_confermata: true })
+  eq(Number(r.totale), 299)
+})
+await prova('Tipologie non disponibili in prova (Gestionale, Sito Personalizzato) → errore', async () => {
+  await errore(`select public.calcola_preventivo('{"tipologia":"gestionale","prova":true}')`, [], 'non è disponibile per la prova')
+  await errore(`select public.calcola_preventivo('{"tipologia":"sito_personalizzato","prova":true}')`, [], 'non è disponibile per la prova')
+})
+await prova('Funzionalità non disponibili in prova (Chatbot AI) → errore, ma valgono nel normale', async () => {
+  await errore(`select public.calcola_preventivo('{"tipologia":"sito_vetrina","prova":true,"extra":{"chatbot_ai":1}}')`, [], 'non è disponibile per la prova')
+  eq(Number((await calcola({ tipologia: 'sito_vetrina', pagine: 3, extra: { chatbot_ai: 1 } })).totale), 498)
+})
+await comeUtente(ADMIN)
+await prova("L'admin esclude un servizio dalla prova (SEO di base) e il cliente non può sceglierlo", async () => {
+  await db.query(`update public.configuratore_voci set in_prova = false where codice = 'seo_base'`)
+  await comeAnon()
+  await errore(`select public.calcola_preventivo('{"tipologia":"sito_vetrina","prova":true,"extra":{"seo_base":1}}')`, [], 'SEO di base')
+  eq(Number((await calcola({ tipologia: 'sito_vetrina', pagine: 3, extra: { seo_base: 1 } })).totale), 398)
+  await comeUtente(ADMIN)
+  await db.query(`update public.configuratore_voci set in_prova = true where codice = 'seo_base'`)
+})
+await prova("L'admin può mettere in prova anche il Chatbot AI e una tipologia complessa", async () => {
+  await db.query(`update public.configuratore_voci set in_prova = true where codice in ('chatbot_ai','gestionale')`)
+  await comeAnon()
+  const r = await prova1({ tipologia: 'gestionale', pagine: 1, extra: { chatbot_ai: 1 } })
+  eq(Number(r.totale), 1398)
+  eq(r.approvazione_manuale, true)
+  await comeUtente(ADMIN)
+  await db.query(`update public.configuratore_voci set in_prova = false where codice in ('chatbot_ai','gestionale')`)
+})
+await prova('Se «Pagina aggiuntiva» è esclusa dalla prova, oltre le pagine incluse → errore', async () => {
+  await db.query(`update public.configuratore_voci set in_prova = false where codice = 'pagina_aggiuntiva'`)
+  await comeAnon()
+  await errore(`select public.calcola_preventivo('{"tipologia":"sito_vetrina","prova":true,"pagine":5}')`, [], 'al massimo 3 pagine')
+  eq(Number((await prova1({ tipologia: 'sito_vetrina', pagine: 3 })).prova.da_pagare_ora), 100)
+  await comeUtente(ADMIN)
+  await db.query(`update public.configuratore_voci set in_prova = true where codice = 'pagina_aggiuntiva'`)
+})
+await prova("L'admin cambia prezzo della prova (150 €) e sconto (50%)", async () => {
+  await db.query(`update public.configuratore_impostazioni set valore = '150' where chiave = 'prova_prezzo'`)
+  await db.query(`update public.configuratore_impostazioni set valore = '50' where chiave = 'prova_sconto_extra'`)
+  await comeAnon()
+  const r = await prova1({ tipologia: 'sito_vetrina', pagine: 4, extra: { modulo_contatti: 1 } })
+  eq(Number(r.prova.da_pagare_ora), 150 + (49 + 39) * 0.5)
+  await comeUtente(ADMIN)
+  await db.query(`update public.configuratore_impostazioni set valore = '100' where chiave = 'prova_prezzo'`)
+  await db.query(`update public.configuratore_impostazioni set valore = '70' where chiave = 'prova_sconto_extra'`)
+})
+await comeUtente(COLLAB)
+await prova('Un collaboratore NON può cambiare cosa è disponibile in prova (0 righe)', async () => {
+  eq((await db.query(`update public.configuratore_voci set in_prova = false`)).affectedRows, 0)
+  eq((await db.query(`update public.configuratore_impostazioni set valore = '0' where chiave = 'prova_prezzo'`)).affectedRows, 0)
+})
+
+console.log('\nProva un mese: ordine, pagamento con carta e contratto')
+await comeAnon()
+let tokenProva
+await prova('Richiesta di prova: ordine "prova", senza prezzo definitivo; urgenza ignorata; prezzi del browser ignorati', async () => {
+  tokenProva = await crea({ ...base, tipologia: 'ristorante_bar', pagine: 6, prova: true, extra: { modulo_contatti: 1, lingua_aggiuntiva: 2 }, scadenza_tipo: 'urgente', prezzo: 1, acconto: 1, totale_indicativo: 1 })
+  await comeSuper()
+  const o = await ordine(tokenProva)
+  eq(o.tipo_ordine, 'prova')
+  eq(o.prezzo, null)
+  eq(o.acconto, null)
+  eq(o.stato, 'richiesto')
+  eq(o.urgenza_richiesta, false)
+  eq(o.scadenza, 'Consegna standard')
+  eq(Number(o.totale_indicativo), 734)
+  eq(Number(o.dettaglio_preventivo.prova.da_pagare_ora), 200.5)
+  await comeAnon()
+})
+await prova('Richiesta di prova con un servizio non disponibile → rifiutata', () =>
+  errore(`select public.crea_richiesta_sito($1::jsonb)`, [JSON.stringify({ ...base, tipologia: 'gestionale', prova: true })], 'non è disponibile per la prova'))
+await prova('Un ordine normale resta "standard"', async () => {
+  const t = await crea({ ...base, tipologia: 'sito_vetrina', pagine: 3 })
+  await comeSuper()
+  eq((await ordine(t)).tipo_ordine, 'standard')
+  await comeAnon()
+})
+await prova('Il cliente vede tipo ordine e riepilogo della prova (senza dati interni)', async () => {
+  const r = (await db.query(`select public.leggi_ordine($1) as o`, [tokenProva])).rows[0].o
+  eq(r.tipo_ordine, 'prova')
+  eq(r.metodo_pagamento, 'stripe')
+  eq(Number(r.dettaglio_preventivo.prova.resto_dopo), 533.5)
+  eq('nota_interna' in r, false)
+})
+await prova('Pagamento con carta (webhook): prova valida un mese, resto da incassare, progetto in prova', async () => {
+  await comeSuper()
+  await db.exec(`update public.ordini_siti set stato='preventivo_inviato', prezzo=734, acconto=200.5, consegna_giorni=15, stripe_session_id='cs_prova_1', preventivo_il=now() where token='${tokenProva}'`)
+  const id = (await db.query(`select public._ordine_segna_pagato('cs_prova_1', 200.5) as id`)).rows[0].id
+  const o = await ordine(tokenProva)
+  eq(o.stato, 'pagato')
+  eq(o.metodo_pagamento, 'stripe')
+  eq(Number(o.saldo_dopo_prova), 533.5)
+  const atteso = (await db.query(`select (current_date + interval '1 month')::date::text d`)).rows[0].d
+  const giorno = (d) => (d instanceof Date ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : String(d).slice(0, 10))
+  eq(giorno(o.prova_fino_al), atteso)
+  const p = (await db.query(`select * from public.progetti where ordine_id = $1`, [id])).rows[0]
+  eq(Number(p.prezzo_totale), 734)
+  eq(Number(p.incassato), 200.5)
+  eq(p.stato, 'in_lavorazione')
+  eq(giorno(p.prova_fino_al), atteso)
+})
+await prova('Il contratto della prova usa il modello 2 con importi e data giusti', async () => {
+  const c = (await ordine(tokenProva)).contratto_finale
+  for (const s of ['CONTRATTO PER LA PROVA DI UN MESE', '200,50 €', '533,50 €', '734,00 €', 'fino al', 'Ristorante / Bar', 'Lingua aggiuntiva ×2'])
+    if (!c.includes(s)) throw new Error('manca "' + s + '" nel contratto')
+  if (c.includes('{{')) throw new Error('segnaposto non sostituiti')
+})
+
+console.log('\nPagamento in contanti (admin)')
+await comeAnon()
+const tCash = await crea({ ...base, tipologia: 'sito_vetrina', pagine: 3 })
+const tCashProva = await crea({ ...base, tipologia: 'sito_vetrina', pagine: 3, prova: true })
+const tCashTot = await crea({ ...base, tipologia: 'landing_page', pagine: 1 })
+await comeSuper()
+const idDi = async (t) => (await ordine(t)).id
+const idCash = await idDi(tCash)
+const idCashProva = await idDi(tCashProva)
+const idCashTot = await idDi(tCashTot)
+await comeAnon()
+await prova('I visitatori NON possono registrare pagamenti', async () => {
+  const msg = await errore(`select public.admin_segna_pagato_contanti($1, 100)`, [idCash])
+  if (!/permission denied/.test(msg)) throw new Error(msg)
+})
+await comeUtente(COLLAB)
+await prova('Un collaboratore NON può registrare pagamenti', () =>
+  errore(`select public.admin_segna_pagato_contanti($1, 100)`, [idCash], 'Non autorizzato'))
+await comeUtente(ADMIN)
+await prova('Senza prezzo impostato → errore', () => errore(`select public.admin_segna_pagato_contanti($1, 100)`, [idCash], 'Imposta prima il prezzo'))
+await prova('Importo non valido (0, negativo, oltre il prezzo) → errore', async () => {
+  await db.query(`update public.ordini_siti set prezzo = 1000 where id = $1`, [idCash])
+  for (const imp of [0, -5, 1000.01]) await errore(`select public.admin_segna_pagato_contanti($1, $2)`, [idCash, imp], 'Importo non valido')
+})
+await prova('Ordine normale: acconto 300 in contanti → pagato, progetto con incassato 300, contratto standard', async () => {
+  await db.query(`select public.admin_segna_pagato_contanti($1, 300)`, [idCash])
+  await comeSuper()
+  const o = (await db.query(`select * from public.ordini_siti where id = $1`, [idCash])).rows[0]
+  eq(o.stato, 'pagato')
+  eq(o.metodo_pagamento, 'contanti')
+  eq(Number(o.importo_pagato), 300)
+  eq(Number(o.acconto), 300)
+  eq(o.prova_fino_al, null)
+  if (!o.contratto_finale.includes('CONTRATTO PER LA REALIZZAZIONE')) throw new Error('modello sbagliato')
+  if (!o.contratto_finale.includes('300,00 €') || !o.contratto_finale.includes('700,00 €')) throw new Error('importi del contratto sbagliati')
+  const p = (await db.query(`select * from public.progetti where ordine_id = $1`, [idCash])).rows[0]
+  eq(Number(p.prezzo_totale), 1000)
+  eq(Number(p.incassato), 300)
+  eq(p.prova_fino_al, null)
+  await comeUtente(ADMIN)
+})
+await prova('Non si può pagare due volte lo stesso ordine', () => errore(`select public.admin_segna_pagato_contanti($1, 300)`, [idCash], 'già pagato'))
+await prova('Ordine di prova in contanti: paga il mese (100 €), resto da incassare dopo, progetto in prova', async () => {
+  await db.query(`update public.ordini_siti set prezzo = 299 where id = $1`, [idCashProva])
+  await db.query(`select public.admin_segna_pagato_contanti($1, 100)`, [idCashProva])
+  await comeSuper()
+  const o = (await db.query(`select * from public.ordini_siti where id = $1`, [idCashProva])).rows[0]
+  eq(o.stato, 'pagato'); eq(o.metodo_pagamento, 'contanti'); eq(Number(o.saldo_dopo_prova), 199)
+  if (!o.contratto_finale.includes('PROVA DI UN MESE') || !o.contratto_finale.includes('199,00 €')) throw new Error('contratto della prova sbagliato')
+  const p = (await db.query(`select * from public.progetti where ordine_id = $1`, [idCashProva])).rows[0]
+  eq(Number(p.prezzo_totale), 299); eq(Number(p.incassato), 100)
+  if (!p.prova_fino_al) throw new Error('manca la fine della prova')
+  await comeUtente(ADMIN)
+})
+await prova('Pagamento totale in contanti (importo = prezzo): nessun acconto, incassato = prezzo', async () => {
+  await db.query(`update public.ordini_siti set prezzo = 199 where id = $1`, [idCashTot])
+  await db.query(`select public.admin_segna_pagato_contanti($1, 199)`, [idCashTot])
+  await comeSuper()
+  const o = (await db.query(`select * from public.ordini_siti where id = $1`, [idCashTot])).rows[0]
+  eq(o.acconto, null); eq(Number(o.importo_pagato), 199)
+  const p = (await db.query(`select incassato from public.progetti where ordine_id = $1`, [idCashTot])).rows[0]
+  eq(Number(p.incassato), 199)
+  await comeUtente(ADMIN)
+})
+
+console.log('\nModello contratto della prova e riesecuzione dello script')
+await prova("L'admin modifica il contratto della prova; un collaboratore no", async () => {
+  await db.query(`update public.ordini_contratto set testo = '# MODELLO PROVA PERSONALIZZATO' where id = 2`)
+  await comeUtente(COLLAB)
+  eq((await db.query(`update public.ordini_contratto set testo = 'hack' where id = 2`)).affectedRows, 0)
+})
+await comeSuper()
+await prova('Rieseguire configuratore.sql NON sovrascrive: contratto modificato, scelte «in prova», prezzi', async () => {
+  await db.exec(`update public.configuratore_voci set in_prova = true where codice = 'chatbot_ai'`)
+  await db.exec(readFileSync(new URL('../../supabase/configuratore.sql', import.meta.url), 'utf8'))
+  eq((await db.query(`select in_prova from public.configuratore_voci where codice = 'chatbot_ai'`)).rows[0].in_prova, true)
+  eq((await db.query(`select in_prova from public.configuratore_voci where codice = 'gestionale'`)).rows[0].in_prova, false)
+  eq((await db.query(`select testo from public.ordini_contratto where id = 2`)).rows[0].testo.startsWith('# MODELLO PROVA PERSONALIZZATO'), true)
+  eq((await db.query(`select valore from public.configuratore_impostazioni where chiave = 'prova_prezzo'`)).rows[0].valore, '100')
+})
+await prova('Il vincolo del contratto ammette solo i modelli 1 e 2', () =>
+  errore(`insert into public.ordini_contratto (id, testo) values (3, 'x')`, [], 'ordini_contratto_id_check'))
 
 console.log(`\n${ok} test superati, ${falliti.length} falliti`)
 if (falliti.length) {

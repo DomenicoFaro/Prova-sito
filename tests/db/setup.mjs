@@ -27,7 +27,7 @@ export async function creaDb({ conConfiguratore = true } = {}) {
   const db = new PGlite()
   await db.exec(STUB)
   const log = []
-  const ordine = ['schema.sql', 'account.sql', 'utenti.sql', 'vendite.sql', 'opportunita.sql', 'soci.sql', 'ordini.sql', 'incassi.sql', 'prezzi_pubblici.sql']
+  const ordine = ['schema.sql', 'account.sql', 'utenti.sql', 'vendite.sql', 'opportunita.sql', 'soci.sql', 'ordini.sql', 'incassi.sql', 'prezzi_abbonamenti.sql']
   for (const f of [...ordine, ...(conConfiguratore ? ['configuratore.sql'] : [])]) {
     let sql = readFileSync(`${PROGETTO}/${f}`, 'utf8').replace(/create extension if not exists pgcrypto;/g, '')
     try {

@@ -48,9 +48,13 @@ Deno.serve(async (req) => {
       'line_items[0][quantity]': '1',
       'line_items[0][price_data][currency]': 'eur',
       'line_items[0][price_data][unit_amount]': String(importo),
-      'line_items[0][price_data][product_data][name]': `Sito web – ordine ${numero}`,
+      'line_items[0][price_data][product_data][name]': `${o.tipo_ordine === 'prova' ? 'Prova di un mese' : 'Sito web'} – ordine ${numero}`,
       'line_items[0][price_data][product_data][description]':
-        o.acconto && Number(o.acconto) < Number(o.prezzo) ? 'Acconto (il saldo è dovuto alla consegna)' : 'Pagamento completo',
+        o.tipo_ordine === 'prova'
+          ? 'Mese di prova (il resto è dovuto dopo il mese, solo se il sito ti è piaciuto)'
+          : o.acconto && Number(o.acconto) < Number(o.prezzo)
+            ? 'Acconto (il saldo è dovuto alla consegna)'
+            : 'Pagamento completo',
       customer_email: o.cliente_email,
       client_reference_id: o.id,
       'metadata[ordine_id]': o.id,

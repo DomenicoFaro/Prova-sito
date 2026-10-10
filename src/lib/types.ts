@@ -32,6 +32,8 @@ export interface Progetto {
   prezzo_totale: number
   /** Soldi già ricevuti dal cliente (acconto, saldo…): da incassare = prezzo_totale - incassato. */
   incassato: number
+  /** Progetto in «Prova un mese» fino a questa data (il resto si incassa dopo). */
+  prova_fino_al: string | null
   /** Ordine del sito (ordini_siti) da cui nasce il progetto, se pagato online. */
   ordine_id: string | null
   data_consegna: string | null
@@ -167,7 +169,7 @@ export interface OpportunitaPresa {
 
 export type TipoPrezzo = 'sito' | 'servizio' | 'abbonamento'
 
-/** Riga della tabella `prezzi` (supabase/soci.sql + prezzi_pubblici.sql): il listino, pubblico per le voci visibili. */
+/** Riga della tabella `prezzi` (supabase/soci.sql + prezzi_abbonamenti.sql): il listino interno, visibile solo a chi ha un account. */
 export interface Prezzo {
   id: string
   tipo: TipoPrezzo

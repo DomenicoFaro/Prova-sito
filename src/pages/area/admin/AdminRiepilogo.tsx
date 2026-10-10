@@ -73,7 +73,14 @@ export default function AdminRiepilogo() {
       t.progetti += 1
       perTeam.set(k, t)
     }
-    return { progetti, fatturato, dovuto, daPagare, margine: fatturato - dovuto, attivi, incassi, perCollaboratore, azienda, perTeam }
+    // «Prova un mese»: siti in prova di cui il cliente deve ancora pagare il resto
+    const inProva = progetti.filter((p) => p.prova_fino_al && Number(p.incassato) < Number(p.prezzo_totale))
+    const prove = {
+      n: inProva.length,
+      resto: inProva.reduce((s, p) => s + (Number(p.prezzo_totale) - Number(p.incassato)), 0),
+      scadenza: inProva.map((p) => p.prova_fino_al as string).sort()[0] ?? null,
+    }
+    return { progetti, prove, fatturato, dovuto, daPagare, margine: fatturato - dovuto, attivi, incassi, perCollaboratore, azienda, perTeam }
   }, [dati, periodo])
 
   return (
@@ -158,6 +165,18 @@ export default function AdminRiepilogo() {
               />
               <StatCard etichetta="Già incassato" valore={formatEuro(calcolo.incassi.incassato)} icona="wallet" tono="verde" nota="Soldi ricevuti (acconti e saldi)" />
               <StatCard etichetta="Ancora da incassare" valore={formatEuro(calcolo.incassi.daIncassare)} icona="euro" tono="ambra" nota="Soldi non ancora ricevuti" />
+            </div>
+          )}
+
+          {!isSocio && calcolo.prove.n > 0 && (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+              <StatCard
+                etichetta="Prove in corso"
+                valore={calcolo.prove.n}
+                icona="clock"
+                tono="ambra"
+                nota={`Resto dopo la prova: ${formatEuro(calcolo.prove.resto)}${calcolo.prove.scadenza ? ` · prima scadenza ${formatData(calcolo.prove.scadenza)}` : ''}`}
+              />
             </div>
           )}
 

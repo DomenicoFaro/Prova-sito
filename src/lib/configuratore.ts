@@ -18,6 +18,8 @@ export interface VoceConfiguratore {
   costo_testo: string
   ordine: number
   attivo: boolean
+  /** Disponibile nella «Prova un mese» (colonna in_prova). */
+  in_prova: boolean
 }
 
 export type Impostazioni = Record<string, string>
@@ -28,6 +30,8 @@ export interface Selezione {
   /** codice → quantità */
   extra: Record<string, number>
   urgenzaConfermata?: boolean
+  /** Calcolo per la «Prova un mese»: 100 € + extra scontati, resto dopo il mese. */
+  prova?: boolean
 }
 
 export interface RigaPreventivo {
@@ -38,6 +42,23 @@ export interface RigaPreventivo {
   incluso: boolean
   modalita: ModalitaPrezzo
 }
+
+/** Blocco «Prova un mese» di `calcola_preventivo`. */
+export interface ProvaPreventivo {
+  prezzo_base: number
+  sconto_percentuale: number
+  /** Pagine aggiuntive + funzionalità extra a prezzo pieno. */
+  extra_pieno: number
+  extra_scontati: number
+  risparmio: number
+  /** Quanto si paga adesso per il mese di prova. */
+  da_pagare_ora: number
+  /** Quanto resta da pagare dopo il mese, se il sito piace. */
+  resto_dopo: number
+  totale_sito: number
+}
+
+export type ModoOrdine = 'standard' | 'prova'
 
 /** Stessa forma restituita dalla funzione SQL `calcola_preventivo` (e salvata in `dettaglio_preventivo`). */
 export interface Preventivo {
@@ -53,6 +74,8 @@ export interface Preventivo {
   urgenza_confermata: boolean
   totale: number
   approvazione_manuale: boolean
+  /** Presente solo nel calcolo della prova. */
+  prova?: ProvaPreventivo | null
 }
 
 export const CODICE_PAGINA_AGGIUNTIVA = 'pagina_aggiuntiva'
@@ -86,6 +109,16 @@ export function percentualeUrgenza(imp: Impostazioni): number {
   return /^[0-9]{1,3}([.,][0-9]+)?$/.test(v) ? Number(v.replace(',', '.')) : 20
 }
 
+/** Prezzo della prova e sconto sulle funzioni aggiuntive (default 100 € e 70%). */
+export function impostazioniProva(imp: Impostazioni): { prezzo: number; sconto: number } {
+  const p = imp.prova_prezzo ?? ''
+  const d = imp.prova_sconto_extra ?? ''
+  return {
+    prezzo: /^[0-9]{1,6}([.,][0-9]+)?$/.test(p) ? Number(p.replace(',', '.')) : 100,
+    sconto: /^[0-9]{1,3}([.,][0-9]+)?$/.test(d) ? Math.min(Number(d.replace(',', '.')), 100) : 70,
+  }
+}
+
 /**
  * Calcolo istantaneo mostrato nel modulo. È una COPIA di `calcola_preventivo` (SQL), che resta l'unica
  * fonte di verità: all'invio il server ricalcola tutto e ignora i numeri del browser.
@@ -94,6 +127,7 @@ export function percentualeUrgenza(imp: Impostazioni): number {
 export function calcolaPreventivo(voci: VoceConfiguratore[], imp: Impostazioni, sel: Selezione): Preventivo | null {
   const t = voci.find((v) => v.gruppo === 'tipologia' && v.codice === sel.tipologia)
   if (!t) return null
+  if (sel.prova && !t.in_prova) return null
 
   const pagine = Math.min(Math.max(Math.trunc(sel.pagine) || 1, 1), MAX_PAGINE)
   let sub = t.prezzo ?? 0
@@ -103,6 +137,7 @@ export function calcolaPreventivo(voci: VoceConfiguratore[], imp: Impostazioni, 
   const prezzoPagina = voci.find((v) => v.gruppo === 'extra' && v.codice === CODICE_PAGINA_AGGIUNTIVA)?.prezzo ?? 0
   const pagImporto = pagExtra * Number(prezzoPagina)
   sub += pagImporto
+  let extSum = pagImporto
 
   const righe: RigaPreventivo[] = []
   for (const [codice, q] of Object.entries(sel.extra)) {
@@ -113,6 +148,7 @@ export function calcolaPreventivo(voci: VoceConfiguratore[], imp: Impostazioni, 
     const incluso = t.incluse.includes(codice)
     const importo = incluso ? 0 : Number(v.prezzo ?? 0) * quantita
     if (!incluso && v.modalita !== 'fisso') appr = true
+    extSum += importo
     righe.push({ codice, nome: v.nome, quantita, importo, incluso, modalita: v.modalita })
     sub += importo
   }
@@ -120,8 +156,25 @@ export function calcolaPreventivo(voci: VoceConfiguratore[], imp: Impostazioni, 
 
   const pct = percentualeUrgenza(imp)
   const urg = arrotonda((sub * pct) / 100)
-  const confermata = sel.urgenzaConfermata === true
+  const confermata = sel.urgenzaConfermata === true && !sel.prova
+  let prova: ProvaPreventivo | null = null
+  if (sel.prova) {
+    const { prezzo, sconto } = impostazioniProva(imp)
+    const scontati = arrotonda((extSum * (100 - sconto)) / 100)
+    const daPagare = prezzo + scontati
+    prova = {
+      prezzo_base: prezzo,
+      sconto_percentuale: sconto,
+      extra_pieno: extSum,
+      extra_scontati: scontati,
+      risparmio: arrotonda(extSum - scontati),
+      da_pagare_ora: arrotonda(daPagare),
+      resto_dopo: arrotonda(Math.max(sub - daPagare, 0)),
+      totale_sito: sub,
+    }
+  }
   return {
+    prova,
     tipologia: { codice: t.codice, nome: t.nome, prezzo: t.prezzo, modalita: t.modalita },
     pagine,
     pagine_incluse: t.pagine_incluse,
@@ -187,7 +240,7 @@ export interface Bozza {
   allegati: AllegatoCaricato[]
 }
 
-const CHIAVE_BOZZA = 'sito-su-misura-bozza'
+const chiaveBozza = (modo: ModoOrdine) => (modo === 'prova' ? 'prova-un-mese-bozza' : 'sito-su-misura-bozza')
 
 export function bozzaVuota(): Bozza {
   return {
@@ -212,9 +265,9 @@ export function bozzaVuota(): Bozza {
   }
 }
 
-export function leggiBozza(): Bozza {
+export function leggiBozza(modo: ModoOrdine = 'standard'): Bozza {
   try {
-    const salvata = JSON.parse(sessionStorage.getItem(CHIAVE_BOZZA) ?? 'null') as Partial<Bozza> | null
+    const salvata = JSON.parse(sessionStorage.getItem(chiaveBozza(modo)) ?? 'null') as Partial<Bozza> | null
     if (salvata && typeof salvata === 'object') return { ...bozzaVuota(), ...salvata }
   } catch {
     /* sessionStorage non disponibile o contenuto non valido */
@@ -222,17 +275,17 @@ export function leggiBozza(): Bozza {
   return bozzaVuota()
 }
 
-export function salvaBozza(b: Bozza) {
+export function salvaBozza(b: Bozza, modo: ModoOrdine = 'standard') {
   try {
-    sessionStorage.setItem(CHIAVE_BOZZA, JSON.stringify(b))
+    sessionStorage.setItem(chiaveBozza(modo), JSON.stringify(b))
   } catch {
     /* il modulo funziona anche senza bozza salvata */
   }
 }
 
-export function cancellaBozza() {
+export function cancellaBozza(modo: ModoOrdine = 'standard') {
   try {
-    sessionStorage.removeItem(CHIAVE_BOZZA)
+    sessionStorage.removeItem(chiaveBozza(modo))
   } catch {
     /* niente da fare */
   }

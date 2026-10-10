@@ -7,8 +7,8 @@ import { useAuth } from '../auth/AuthProvider'
 const VOCI = [
   { to: '/', label: 'Home', end: true },
   { to: '/portfolio', label: 'Portfolio' },
-  { to: '/prezzi', label: 'Prezzi' },
   { to: '/sito-su-misura', label: 'Acquista il tuo sito' },
+  { to: '/prova-un-mese', label: 'Prova un mese' },
 ]
 
 /** Logo su fondo nero: va messo su superfici nere, dove si fonde con lo sfondo. */

@@ -37,8 +37,8 @@ export default function Home() {
             <Link to="/sito-su-misura" className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
               <Icon name="cart" className="h-4 w-4" /> Acquista il tuo sito
             </Link>
-            <Link to="/area/prezzi" className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
-              <Icon name="euro" className="h-4 w-4" /> Prezzi
+            <Link to="/prova-un-mese" className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
+              <Icon name="clock" className="h-4 w-4" /> Prova un mese
             </Link>
             <Link to={session ? '/area' : '/login'} className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
               <Icon name="lock" className="h-4 w-4" /> Area riservata

@@ -53,6 +53,11 @@ export interface OrdineSito {
   dettaglio_preventivo: Preventivo | null
   approvazione_manuale: boolean
   allegati: string[]
+  /** «Prova un mese»: il cliente paga 100 € + extra scontati, il resto dopo il mese. */
+  tipo_ordine: 'standard' | 'prova'
+  metodo_pagamento: 'stripe' | 'contanti'
+  prova_fino_al: string | null
+  saldo_dopo_prova: number | null
   created_at: string
 }
 
@@ -84,6 +89,10 @@ export interface OrdineCliente {
   urgenza_richiesta?: boolean
   urgenza_confermata?: boolean
   n_allegati?: number
+  tipo_ordine?: 'standard' | 'prova'
+  metodo_pagamento?: 'stripe' | 'contanti'
+  prova_fino_al?: string | null
+  saldo_dopo_prova?: number | null
   contratto: string | null
 }
 

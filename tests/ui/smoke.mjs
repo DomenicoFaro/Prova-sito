@@ -40,7 +40,7 @@ async function pagina(ruolo, id) {
 }
 
 const gruppi = [
-  [null, 'u0', ['/', '/portfolio', '/prezzi', '/sito-su-misura', '/acquista-sito-su-misura', '/ordine/11111111-2222-3333-4444-555555555555', '/login', '/password-dimenticata', '/pagina-inesistente']],
+  [null, 'u0', ['/', '/portfolio', '/prezzi', '/sito-su-misura', '/acquista-sito-su-misura', '/prova-un-mese', '/ordine/11111111-2222-3333-4444-555555555555', '/login', '/password-dimenticata', '/pagina-inesistente']],
   ['admin', 'ua', ['/area', '/area/admin', '/area/admin/progetti', '/area/admin/progetti/nuovo', '/area/admin/progetti/p1', '/area/admin/preventivi', '/area/admin/pagamenti', '/area/admin/vendite', '/area/admin/opportunita', '/area/admin/collaboratori', '/area/prezzi', '/area/profilo']],
   ['collaboratore', 'uc', ['/area', '/area/dashboard', '/area/vendite', '/area/vendite/nuova', '/area/opportunita', '/area/prezzi', '/area/profilo']],
 ]

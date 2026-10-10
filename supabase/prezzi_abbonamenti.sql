@@ -1,11 +1,13 @@
 -- =============================================================================
--- Listino prezzi PUBBLICO, ordinato in Siti web, Servizi e Abbonamenti.
+-- Listino prezzi INTERNO con il tipo «Abbonamento»: Siti web, Servizi, Abbonamenti.
 -- Esegui UNA VOLTA dopo soci.sql: SQL Editor → New query → incolla → Run.
 -- Si può rieseguire senza problemi.
 --
 --   • nuovo tipo 'abbonamento' (oltre a 'sito' e 'servizio');
---   • i visitatori (anche senza account) leggono le voci con attivo = true.
---     Le voci nascoste restano visibili solo ad admin e soci.
+--   • il listino lo vedono SOLO gli utenti con un account (collaboratori, soci, admin),
+--     dalla pagina Area riservata → Prezzi. I visitatori del sito NON lo leggono.
+--     Se avevi già eseguito la vecchia versione «prezzi pubblici», questo script
+--     toglie l'accesso pubblico.
 -- =============================================================================
 
 -- Tipo 'abbonamento'. Alla prima esecuzione i servizi già inseriti con
@@ -31,12 +33,8 @@ begin
   end if;
 end $$;
 
--- Lettura pubblica delle sole voci visibili
+-- Niente lettura pubblica: solo chi ha un account (policy «lettura utenti» di soci.sql)
 drop policy if exists "prezzi: lettura pubblica" on public.prezzi;
-create policy "prezzi: lettura pubblica"
-  on public.prezzi for select to anon
-  using (attivo);
-
-grant select on public.prezzi to anon;
+revoke select on public.prezzi from anon;
 
 notify pgrst, 'reload schema';

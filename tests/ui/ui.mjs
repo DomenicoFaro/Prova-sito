@@ -386,11 +386,18 @@ await prova('Sito Personalizzato: richiede approvazione manuale, avviso e nessun
   contiene(t, 'Totale indicativo (parziale)')
 })
 
-console.log('\nPagina prezzi pubblica (modifica precedente)')
-await page.goto(`${BASE}/prezzi`, { waitUntil: 'networkidle0' })
-await prova('/prezzi mostra Siti web, Servizi e Abbonamenti', async () => {
+console.log('\nIl listino prezzi NON è più pubblico')
+await page.goto(`${BASE}/`, { waitUntil: 'networkidle0' })
+await prova('Home: niente pulsante né voce di menu «Prezzi»; c\'è «Prova un mese»', async () => {
   const t = await testo()
-  for (const s of ['Siti web', 'Servizi', 'Abbonamenti', 'Sito vetrina', 'Logo', 'Assistenza', '30 € al mese']) contiene(t, s)
+  if (/\bPrezzi\b/.test(t)) throw new Error('compare ancora "Prezzi" nella home')
+  contiene(t, 'Prova un mese')
+  contiene(t, 'Acquista il tuo sito')
+})
+await prova('/prezzi non mostra nulla ai visitatori: porta al login', async () => {
+  await page.goto(`${BASE}/prezzi`, { waitUntil: 'networkidle0' })
+  eq(new URL(page.url()).pathname, '/login')
+  if (/Siti web|Abbonamenti/.test(await testo())) throw new Error('il listino è visibile')
 })
 
 console.log('\nResponsive (telefono 375 px)')

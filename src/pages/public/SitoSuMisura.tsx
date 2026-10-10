@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode 
 import { Link, useNavigate } from 'react-router-dom'
 import { Icon } from '../../components/Icon'
 import { Seo } from '../../components/Seo'
+import { PannelloProva } from '../../components/RiepilogoPreventivo'
 import { Caricamento, MessaggioErrore, Spinner } from '../../components/ui'
 import {
   AVVISO_PREVENTIVO_PREDEFINITO,
@@ -14,6 +15,7 @@ import {
   CODICE_PAGINA_AGGIUNTIVA,
   erroreAllegato,
   FASCE_BUDGET,
+  impostazioniProva,
   formatPrezzoVoce,
   leggiBozza,
   MAX_ALLEGATI,
@@ -23,6 +25,7 @@ import {
   salvaBozza,
   type AllegatoCaricato,
   type Bozza,
+  type ModoOrdine,
   type VoceConfiguratore,
 } from '../../lib/configuratore'
 import { formatEuro } from '../../lib/format'
@@ -83,9 +86,10 @@ function Indicatore({ passo, onVai }: { passo: number; onVai: (p: number) => voi
   )
 }
 
-export default function SitoSuMisura() {
+export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine }) {
   const navigate = useNavigate()
-  const [b, setB] = useState<Bozza>(leggiBozza)
+  const prova = modo === 'prova'
+  const [b, setB] = useState<Bozza>(() => leggiBozza(modo))
   const [errore, setErrore] = useState<string | null>(null)
   const [invio, setInvio] = useState(false)
   const [upload, setUpload] = useState(false)
@@ -96,7 +100,7 @@ export default function SitoSuMisura() {
 
   const { dati, caricamento, errore: erroreListino, ricarica } = useQuery(caricaConfiguratore)
 
-  useEffect(() => salvaBozza(b), [b])
+  useEffect(() => salvaBozza(b, modo), [b, modo])
 
   // A ogni cambio di passaggio: porta l'attenzione sul titolo (utile con tastiera e lettori di schermo)
   const primo = useRef(true)
@@ -111,18 +115,24 @@ export default function SitoSuMisura() {
 
   const set = (patch: Partial<Bozza>) => setB((x) => ({ ...x, ...patch }))
 
-  const tipologie = useMemo(() => (dati?.voci ?? []).filter((v) => v.gruppo === 'tipologia'), [dati])
+  // Nella prova si vedono solo le voci che l'admin ha lasciato disponibili (colonna in_prova)
+  const tipologie = useMemo(() => (dati?.voci ?? []).filter((v) => v.gruppo === 'tipologia' && (!prova || v.in_prova)), [dati, prova])
   const extra = useMemo(
-    () => (dati?.voci ?? []).filter((v) => v.gruppo === 'extra' && v.codice !== CODICE_PAGINA_AGGIUNTIVA),
-    [dati],
+    () => (dati?.voci ?? []).filter((v) => v.gruppo === 'extra' && v.codice !== CODICE_PAGINA_AGGIUNTIVA && (!prova || v.in_prova)),
+    [dati, prova],
   )
   const servizi = useMemo(() => (dati?.voci ?? []).filter((v) => v.gruppo === 'servizio_esterno'), [dati])
   const tipologia = tipologie.find((t) => t.codice === b.tipologia) ?? null
   const prezzoPagina = dati?.voci.find((v) => v.codice === CODICE_PAGINA_AGGIUNTIVA)?.prezzo ?? null
 
+  const extraValidi = useMemo(() => {
+    const ammessi = new Set(extra.map((v) => v.codice))
+    return Object.fromEntries(Object.entries(b.extra).filter(([codice]) => ammessi.has(codice)))
+  }, [extra, b.extra])
+
   const preventivo = useMemo(
-    () => (dati ? calcolaPreventivo(dati.voci, dati.impostazioni, { tipologia: b.tipologia, pagine: b.pagine, extra: b.extra }) : null),
-    [dati, b.tipologia, b.pagine, b.extra],
+    () => (dati ? calcolaPreventivo(dati.voci, dati.impostazioni, { tipologia: b.tipologia, pagine: b.pagine, extra: extraValidi, prova }) : null),
+    [dati, b.tipologia, b.pagine, extraValidi, prova],
   )
 
   function valida(passo: number): string | null {
@@ -211,9 +221,10 @@ export default function SitoSuMisura() {
           dominio: b.dominio.trim(),
           stile: b.stile.trim(),
           descrizione: b.descrizione.trim(),
-          extra: b.extra,
+          extra: extraValidi,
+          prova,
           budget: b.budget,
-          scadenza_tipo: b.scadenza_tipo,
+          scadenza_tipo: prova && b.scadenza_tipo === 'urgente' ? 'standard' : b.scadenza_tipo,
           cartella: b.cartella,
           allegati: b.allegati.map((a) => a.path),
         },
@@ -221,7 +232,7 @@ export default function SitoSuMisura() {
       if (error) throw error
       const token = String(data)
       salvaOrdine({ token, nome: b.nome_attivita.trim() || tipologia?.nome || 'Il mio sito', data: new Date().toISOString() })
-      cancellaBozza()
+      cancellaBozza(modo)
       navigate(`/ordine/${token}?nuovo=1`)
     } catch (err) {
       setErrore(messaggioErrore(err))
@@ -238,19 +249,29 @@ export default function SitoSuMisura() {
 
   const avvisoPreventivo = dati?.impostazioni.avviso_preventivo || AVVISO_PREVENTIVO_PREDEFINITO
   const avvisoServizi = dati?.impostazioni.avviso_servizi_esterni || AVVISO_SERVIZI_PREDEFINITO
-  const urgente = b.scadenza_tipo === 'urgente'
+  const urgente = b.scadenza_tipo === 'urgente' && !prova
   const suffisso = preventivo?.approvazione_manuale ? ' (parziale)' : ''
 
   return (
     <>
-      <Seo titolo="Acquista il tuo sito" />
+      <Seo titolo={prova ? 'Prova un mese' : 'Acquista il tuo sito'} />
       <section className="bg-black pt-10 pb-12 text-center text-white">
         <div className="container-sito">
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">Il tuo sito, su misura</h1>
-          <p className="mx-auto mt-3 max-w-xl text-slate-300">
-            Scegli il tipo di sito e le funzioni che ti servono: vedi subito un preventivo indicativo. FormaWeb lo conferma, poi leggi il
-            contratto, accetti e paghi online.
-          </p>
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{prova ? 'Prova il tuo sito per un mese' : 'Il tuo sito, su misura'}</h1>
+          {prova && dati ? (
+            <p className="mx-auto mt-3 max-w-xl text-slate-300">
+              Prova il tuo sito per un mese a <strong className="text-white">{formatEuro(impostazioniProva(dati.impostazioni).prezzo).replace(/,00(?=\s)/, '')}</strong>,
+              con le funzionalità aggiuntive <strong className="text-white">scontate del {impostazioniProva(dati.impostazioni).sconto}%</strong>. Se alla fine
+              del mese ti piace, paghi il resto; se no, non devi altro.
+            </p>
+          ) : prova ? (
+            <p className="mx-auto mt-3 max-w-xl text-slate-300">Prova il tuo sito per un mese a prezzo ridotto: se alla fine ti piace, paghi il resto.</p>
+          ) : (
+            <p className="mx-auto mt-3 max-w-xl text-slate-300">
+              Scegli il tipo di sito e le funzioni che ti servono: vedi subito un preventivo indicativo. FormaWeb lo conferma, poi leggi il
+              contratto, accetti e paghi online.
+            </p>
+          )}
         </div>
       </section>
 
@@ -402,7 +423,10 @@ export default function SitoSuMisura() {
                 <>
                   <fieldset className="card space-y-3 p-5 sm:p-6">
                     <legend className="text-base font-bold text-slate-900">Funzionalità aggiuntive</legend>
-                    <p className="text-sm text-slate-500">Scegli quelle che ti servono: il totale si aggiorna subito. Quelle già comprese nel tuo sito non si pagano due volte.</p>
+                    <p className="text-sm text-slate-500">
+                      Scegli quelle che ti servono: il totale si aggiorna subito. Quelle già comprese nel tuo sito non si pagano due volte.
+                      {prova && dati && <> Nella prova hanno lo <strong>sconto del {impostazioniProva(dati.impostazioni).sconto}%</strong>.</>}
+                    </p>
                     <div className="grid gap-3 sm:grid-cols-2">
                       {extra.map((v) => {
                         const inclusa = tipologia?.incluse.includes(v.codice) ?? false
@@ -469,7 +493,7 @@ export default function SitoSuMisura() {
                   <fieldset className="card space-y-3 p-5 sm:p-6">
                     <legend className="text-base font-bold text-slate-900">Tempi di consegna</legend>
                     <div role="radiogroup" aria-label="Tempi di consegna" className="space-y-2">
-                      {OPZIONI_SCADENZA.map((o) => (
+                      {OPZIONI_SCADENZA.filter((o) => !prova || o.valore !== 'urgente').map((o) => (
                         <label
                           key={o.valore}
                           className={`flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition ${
@@ -566,7 +590,7 @@ export default function SitoSuMisura() {
                         </div>
                       ))}
                       <div className="flex justify-between gap-4 py-2.5">
-                        <dt className="font-semibold text-slate-900">Subtotale realizzazione</dt>
+                        <dt className="font-semibold text-slate-900">{prova ? 'Prezzo pieno del sito' : 'Subtotale realizzazione'}</dt>
                         <dd className="font-semibold tabular-nums">{formatEuro(preventivo.subtotale)}</dd>
                       </div>
                       {urgente && (
@@ -581,13 +605,19 @@ export default function SitoSuMisura() {
                         </div>
                       )}
                     </dl>
-                    <div className="mt-3 flex items-baseline justify-between gap-4 rounded-xl bg-slate-900 px-4 py-3 text-white">
-                      <span className="font-semibold">Totale indicativo{suffisso}</span>
-                      <span className="text-2xl font-extrabold tabular-nums" aria-live="polite">
-                        {preventivo.approvazione_manuale ? 'da ' : ''}
-                        {formatEuro(preventivo.totale)}
-                      </span>
-                    </div>
+                    {prova && preventivo.prova ? (
+                      <div className="mt-3">
+                        <PannelloProva prova={preventivo.prova} parziale={preventivo.approvazione_manuale} />
+                      </div>
+                    ) : (
+                      <div className="mt-3 flex items-baseline justify-between gap-4 rounded-xl bg-slate-900 px-4 py-3 text-white">
+                        <span className="font-semibold">Totale indicativo{suffisso}</span>
+                        <span className="text-2xl font-extrabold tabular-nums" aria-live="polite">
+                          {preventivo.approvazione_manuale ? 'da ' : ''}
+                          {formatEuro(preventivo.totale)}
+                        </span>
+                      </div>
+                    )}
                     <p className="mt-3 text-sm text-slate-600">{avvisoPreventivo}</p>
                   </div>
 
@@ -650,13 +680,17 @@ export default function SitoSuMisura() {
                         </div>
                       ))}
                     </dl>
-                    <div className="flex items-baseline justify-between gap-4 rounded-xl bg-slate-900 px-4 py-3 text-white">
-                      <span className="font-semibold">Totale indicativo{suffisso}</span>
-                      <span className="text-xl font-extrabold tabular-nums">
-                        {preventivo.approvazione_manuale ? 'da ' : ''}
-                        {formatEuro(preventivo.totale)}
-                      </span>
-                    </div>
+                    {prova && preventivo.prova ? (
+                      <PannelloProva prova={preventivo.prova} parziale={preventivo.approvazione_manuale} />
+                    ) : (
+                      <div className="flex items-baseline justify-between gap-4 rounded-xl bg-slate-900 px-4 py-3 text-white">
+                        <span className="font-semibold">Totale indicativo{suffisso}</span>
+                        <span className="text-xl font-extrabold tabular-nums">
+                          {preventivo.approvazione_manuale ? 'da ' : ''}
+                          {formatEuro(preventivo.totale)}
+                        </span>
+                      </div>
+                    )}
                     <p className="text-xs text-slate-500">{avvisoPreventivo}</p>
                   </div>
 
@@ -666,7 +700,10 @@ export default function SitoSuMisura() {
                       <li className="flex gap-3"><span className="font-bold text-brand-600">1.</span> Invii la richiesta: non ti impegna a nulla.</li>
                       <li className="flex gap-3"><span className="font-bold text-brand-600">2.</span> FormaWeb la verifica e ti conferma l&apos;importo definitivo.</li>
                       <li className="flex gap-3"><span className="font-bold text-brand-600">3.</span> Dalla pagina del tuo ordine leggi il contratto, già compilato con i tuoi dati.</li>
-                      <li className="flex gap-3"><span className="font-bold text-brand-600">4.</span> Lo accetti, paghi online in sicurezza e ricevi il contratto.</li>
+                      <li className="flex gap-3">
+                        <span className="font-bold text-brand-600">4.</span>
+                        {prova ? 'Lo accetti e paghi online in sicurezza il mese di prova. Dopo il mese, se il sito ti è piaciuto, paghi il resto.' : 'Lo accetti, paghi online in sicurezza e ricevi il contratto.'}
+                      </li>
                     </ol>
                     <p className="mt-3 text-xs text-slate-500">Il pagamento diventa disponibile solo dopo la conferma dell&apos;importo da parte di FormaWeb.</p>
                   </div>
@@ -709,11 +746,17 @@ export default function SitoSuMisura() {
           <div className="container-sito flex items-center justify-between gap-3 py-3">
             <div className="min-w-0">
               <p className="truncate text-xs text-slate-500">{preventivo.tipologia.nome} · {preventivo.pagine} {preventivo.pagine === 1 ? 'pagina' : 'pagine'}</p>
-              <p className="text-xs text-slate-500">{preventivo.approvazione_manuale ? 'Totale indicativo parziale' : 'Totale indicativo'}</p>
+              <p className="text-xs text-slate-500">
+                {prova && preventivo.prova
+                  ? `Da pagare ora · poi ${formatEuro(preventivo.prova.resto_dopo)} dopo il mese`
+                  : preventivo.approvazione_manuale
+                    ? 'Totale indicativo parziale'
+                    : 'Totale indicativo'}
+              </p>
             </div>
             <p className="text-xl font-extrabold text-slate-900 tabular-nums">
               {preventivo.approvazione_manuale ? 'da ' : ''}
-              {formatEuro(preventivo.totale)}
+              {formatEuro(prova && preventivo.prova ? preventivo.prova.da_pagare_ora : preventivo.totale)}
             </p>
           </div>
         </div>

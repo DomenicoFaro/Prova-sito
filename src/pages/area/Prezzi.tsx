@@ -43,7 +43,7 @@ const SEZIONI: { tipo: TipoPrezzo; titolo: string }[] = [
   { tipo: 'abbonamento', titolo: 'Abbonamenti' },
 ]
 
-/** Gestione del listino: lo modificano admin e soci. Le voci visibili sono pubbliche (pagina /prezzi). */
+/** Listino interno: lo vedono tutti quelli che hanno un account (non è pubblico); lo modificano admin e soci. */
 export default function Prezzi() {
   const { isGestore } = useAuth()
   const [modale, setModale] = useState<'nuovo' | Prezzo | null>(null)
@@ -151,7 +151,7 @@ export default function Prezzi() {
         titolo="Prezzi"
         sottotitolo={
           isGestore
-            ? 'Il listino è pubblico (pagina Prezzi del sito): le voci nascoste le vedi solo tu e i soci.'
+            ? 'Il listino interno: lo vedono tutti i collaboratori, non è pubblico. Le voci nascoste le vedi solo tu e i soci.'
             : 'Il listino dei nostri siti, servizi e abbonamenti. Usalo come riferimento quando parli con un cliente.'
         }
         azioni={
@@ -292,7 +292,7 @@ export default function Prezzi() {
             {([
               ['a_partire_da', 'Mostra "da" davanti al prezzo'],
               ['in_evidenza', 'Metti in evidenza'],
-              ['attivo', 'Visibile a tutti (sito pubblico)'],
+              ['attivo', 'Visibile ai collaboratori'],
             ] as const).map(([k, etichetta]) => (
               <label key={k} className="flex items-center gap-3">
                 <input type="checkbox" className="h-4 w-4 accent-brand-600" checked={form[k]} onChange={(e) => set(k, e.target.checked)} />
@@ -311,7 +311,7 @@ export default function Prezzi() {
 
       <Modale aperta={daEliminare !== null} titolo="Eliminare la voce?" onChiudi={() => setDaEliminare(null)}>
         <p className="text-sm text-slate-600">
-          "{daEliminare?.nome}" verrà rimossa definitivamente dal listino. Per toglierla solo dalla vista pubblica usa "Nascondi".
+          "{daEliminare?.nome}" verrà rimossa definitivamente dal listino. Per toglierla solo dalla vista dei collaboratori usa "Nascondi".
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button className="btn-secondary" onClick={() => setDaEliminare(null)}>Annulla</button>

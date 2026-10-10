@@ -10,7 +10,6 @@ import Home from './pages/public/Home'
 // Parte pubblica secondaria e area riservata caricate su richiesta
 const Portfolio = lazy(() => import('./pages/public/Portfolio'))
 const ProgettoDettaglio = lazy(() => import('./pages/public/ProgettoDettaglio'))
-const PrezziPubblici = lazy(() => import('./pages/public/Prezzi'))
 const SitoSuMisura = lazy(() => import('./pages/public/SitoSuMisura'))
 const Ordine = lazy(() => import('./pages/public/Ordine'))
 const NotFound = lazy(() => import('./pages/public/NotFound'))
@@ -47,8 +46,10 @@ export default function App() {
               <Route index element={<Home />} />
               <Route path="portfolio" element={<Portfolio />} />
               <Route path="portfolio/:id" element={<ProgettoDettaglio />} />
-              <Route path="prezzi" element={<PrezziPubblici />} />
-              <Route path="sito-su-misura" element={<SitoSuMisura />} />
+              {/* Il listino prezzi è solo per chi ha un account: dal pannello (Area riservata → Prezzi) */}
+              <Route path="prezzi" element={<Navigate to="/area/prezzi" replace />} />
+              <Route path="sito-su-misura" element={<SitoSuMisura key="standard" />} />
+              <Route path="prova-un-mese" element={<SitoSuMisura key="prova" modo="prova" />} />
               <Route path="acquista-sito-su-misura" element={<Navigate to="/sito-su-misura" replace />} />
               <Route path="ordine/:token" element={<Ordine />} />
               <Route path="*" element={<NotFound />} />

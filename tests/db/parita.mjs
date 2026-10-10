@@ -32,15 +32,24 @@ const rnd = () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967
 const pick = (a) => a[Math.floor(rnd() * a.length)]
 
 let n = 0, diversi = 0
-for (const urg of [false, true]) {
-  for (let i = 0; i < 400; i++) {
-    const t = pick(tipologie)
+// modalità: acquisto normale (senza/con urgenza confermata) e prova un mese (impostazioni casuali)
+const modi = [{ urg: false, prova: false, giri: 400 }, { urg: true, prova: false, giri: 400 }, { urg: false, prova: true, giri: 600 }]
+for (const { urg, prova, giri } of modi) {
+  for (let i = 0; i < giri; i++) {
+    const t = pick(prova ? tipologie.filter((x) => x.in_prova) : tipologie)
+    const impI = { ...imp }
+    if (prova) {
+      impI.prova_prezzo = pick(['100', '150', '99,9', '0', '250.5'])
+      impI.prova_sconto_extra = pick(['70', '50', '0', '100', '33,3'])
+      await db.query("update public.configuratore_impostazioni set valore = $1 where chiave = 'prova_prezzo'", [impI.prova_prezzo])
+      await db.query("update public.configuratore_impostazioni set valore = $1 where chiave = 'prova_sconto_extra'", [impI.prova_sconto_extra])
+    }
     const ex = {}
-    for (const e of extra) if (rnd() < 0.35) ex[e.codice] = e.a_quantita ? 1 + Math.floor(rnd() * 25) : 1 + Math.floor(rnd() * 3)
+    for (const e of prova ? extra.filter((x) => x.in_prova) : extra) if (rnd() < 0.35) ex[e.codice] = e.a_quantita ? 1 + Math.floor(rnd() * 25) : 1 + Math.floor(rnd() * 3)
     const pagine = 1 + Math.floor(rnd() * 40)
-    const sel = { tipologia: t.codice, pagine, extra: ex, urgenzaConfermata: urg }
-    const a = ts.calcolaPreventivo(voci, imp, sel)
-    const b = (await db.query('select public.calcola_preventivo($1::jsonb) r', [JSON.stringify({ tipologia: t.codice, pagine, extra: ex, urgenza_confermata: urg })])).rows[0].r
+    const sel = { tipologia: t.codice, pagine, extra: ex, urgenzaConfermata: urg, prova }
+    const a = ts.calcolaPreventivo(voci, impI, sel)
+    const b = (await db.query('select public.calcola_preventivo($1::jsonb) r', [JSON.stringify({ tipologia: t.codice, pagine, extra: ex, urgenza_confermata: urg, prova })])).rows[0].r
     n++
     const confronta = [
       ['subtotale', Number(a.subtotale), Number(b.subtotale)],
@@ -49,6 +58,9 @@ for (const urg of [false, true]) {
       ['pag_extra', a.pagine_extra, b.pagine_extra],
       ['pag_importo', Number(a.pagine_extra_importo), Number(b.pagine_extra_importo)],
       ['approvazione', a.approvazione_manuale, b.approvazione_manuale],
+      ...(prova
+        ? ['prezzo_base', 'sconto_percentuale', 'extra_pieno', 'extra_scontati', 'risparmio', 'da_pagare_ora', 'resto_dopo', 'totale_sito'].map((k) => ['prova.' + k, Number(a.prova[k]), Number(b.prova[k])])
+        : [['prova assente', a.prova ?? null, b.prova ?? null]]),
       ['righe', a.righe.map((r) => `${r.codice}:${r.quantita}:${r.importo}:${r.incluso}`).join('|'), b.righe.map((r) => `${r.codice}:${r.quantita}:${Number(r.importo)}:${r.incluso}`).sort((x, y) => 0).join('|')],
     ]
     for (const [campo, x, y] of confronta) {

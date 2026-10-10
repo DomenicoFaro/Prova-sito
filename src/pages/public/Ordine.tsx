@@ -5,7 +5,7 @@ import { RiepilogoPreventivo } from '../../components/RiepilogoPreventivo'
 import { Seo } from '../../components/Seo'
 import { TestoContratto } from '../../components/TestoContratto'
 import { Caricamento, MessaggioErrore, MessaggioSuccesso, Spinner } from '../../components/ui'
-import { formatDataOra, formatEuro } from '../../lib/format'
+import { formatData, formatDataOra, formatEuro } from '../../lib/format'
 import { avviaPagamento, ETICHETTE_STATO_ORDINE, linkOrdine, scaricaContratto, stampaContratto, type OrdineCliente } from '../../lib/ordini'
 import { messaggioErrore, supabase } from '../../lib/supabase'
 
@@ -109,6 +109,7 @@ export default function Ordine() {
     )
   }
 
+  const inProva = ordine.tipo_ordine === 'prova'
   const daPagare = Number(ordine.acconto ?? ordine.prezzo ?? 0)
   const saldo = Number(ordine.prezzo ?? 0) - daPagare
   const nomeValido = firmatario.trim().length >= 2
@@ -119,7 +120,10 @@ export default function Ordine() {
       <div className="container-sito max-w-3xl space-y-6 py-10">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-brand-600">Ordine {ordine.numero_ordine}</p>
+            <p className="text-sm font-semibold text-brand-600">
+              Ordine {ordine.numero_ordine}
+              {inProva && <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">Prova di un mese</span>}
+            </p>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">{ordine.nome_attivita || ordine.tipo_sito || 'Il tuo sito'}</h1>
             <p className="mt-1 text-sm text-slate-500">Stato: {ETICHETTE_STATO_ORDINE[ordine.stato]}</p>
           </div>
@@ -174,11 +178,17 @@ export default function Ordine() {
                   <h2 className="text-lg font-bold text-slate-900">Il tuo preventivo</h2>
                   <p className="mt-1 text-sm text-emerald-700">Importo confermato da FormaWeb.</p>
                   <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
-                    <Dato etichetta="Prezzo del sito" valore={formatEuro(ordine.prezzo)} />
-                    <Dato etichetta="Da pagare ora" valore={formatEuro(daPagare)} />
+                    <Dato etichetta={inProva ? 'Prezzo pieno del sito' : 'Prezzo del sito'} valore={formatEuro(ordine.prezzo)} />
+                    <Dato etichetta={inProva ? 'Da pagare ora (mese di prova)' : 'Da pagare ora'} valore={formatEuro(daPagare)} />
                     <Dato etichetta="Consegna" valore={ordine.consegna_giorni ? `${ordine.consegna_giorni} giorni` : '—'} />
                   </dl>
-                  {saldo > 0 && <p className="mt-3 text-sm text-slate-600">Il saldo di {formatEuro(saldo)} è dovuto alla consegna del sito.</p>}
+                  {saldo > 0 && (
+                    <p className="mt-3 text-sm text-slate-600">
+                      {inProva
+                        ? `Il resto di ${formatEuro(saldo)} lo paghi alla fine del mese di prova, solo se decidi di tenere il sito. Se non ti convince, non paghi altro.`
+                        : `Il saldo di ${formatEuro(saldo)} è dovuto alla consegna del sito.`}
+                    </p>
+                  )}
                   {ordine.nota_preventivo && (
                     <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm whitespace-pre-line text-slate-700">{ordine.nota_preventivo}</p>
                   )}
@@ -210,7 +220,7 @@ export default function Ordine() {
                   {erroreAzione && <MessaggioErrore>{erroreAzione}</MessaggioErrore>}
 
                   <button onClick={accettaEPaga} disabled={!accetto || !nomeValido || inCorso || !ordine.contratto} className="btn-primary w-full py-3 text-base sm:w-auto">
-                    {inCorso ? <Spinner className="h-4 w-4" /> : <Icon name="lock" className="h-4 w-4" />} Accetta e paga {formatEuro(daPagare)}
+                    {inCorso ? <Spinner className="h-4 w-4" /> : <Icon name="lock" className="h-4 w-4" />} {inProva ? 'Accetta e paga la prova' : 'Accetta e paga'} {formatEuro(daPagare)}
                   </button>
                   <p className="text-xs text-slate-500">Pagamento sicuro con carta tramite Stripe. Dopo il pagamento ti arriva il contratto compilato.</p>
                 </div>
@@ -222,9 +232,21 @@ export default function Ordine() {
         {ordine.stato === 'pagato' && (
           <>
             <MessaggioSuccesso>
-              Pagamento ricevuto{ordine.pagato_il ? ` il ${formatDataOra(ordine.pagato_il)}` : ''}: {formatEuro(ordine.importo_pagato)}. Grazie!
-              Il contratto compilato è qui sotto e te lo abbiamo inviato anche via email a {ordine.cliente_email} (se non lo trovi, controlla lo spam).
+              {ordine.metodo_pagamento === 'contanti' ? 'Pagamento in contanti registrato' : 'Pagamento ricevuto'}
+              {ordine.pagato_il ? ` il ${formatDataOra(ordine.pagato_il)}` : ''}: {formatEuro(ordine.importo_pagato)}. Grazie!{' '}
+              {ordine.metodo_pagamento === 'contanti'
+                ? 'Il contratto compilato è qui sotto: puoi scaricarlo o stamparlo.'
+                : `Il contratto compilato è qui sotto e te lo abbiamo inviato anche via email a ${ordine.cliente_email} (se non lo trovi, controlla lo spam).`}
             </MessaggioSuccesso>
+            {inProva && ordine.prova_fino_al && (
+              <div className="card p-5 sm:p-6">
+                <h2 className="font-semibold text-slate-900">La tua prova di un mese</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Puoi provare il sito fino al <strong>{formatData(ordine.prova_fino_al)}</strong>. Se ti piace, alla fine del mese paghi il resto di{' '}
+                  <strong>{formatEuro(ordine.saldo_dopo_prova)}</strong>; se non ti convince, non devi altro.
+                </p>
+              </div>
+            )}
             {ordine.contratto && (
               <div className="card space-y-4 p-5 sm:p-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">

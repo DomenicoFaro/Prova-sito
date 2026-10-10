@@ -24,7 +24,7 @@ const esegui = (file) =>
 let codice = 0
 try {
   await attendiServer()
-  for (const f of ['./ui.mjs', './ui_admin.mjs', './smoke.mjs']) {
+  for (const f of ['./ui.mjs', './ui_prova.mjs', './ui_admin.mjs', './smoke.mjs']) {
     console.log('\n=== ' + f + ' ===')
     if (await esegui(f)) codice = 1
   }
