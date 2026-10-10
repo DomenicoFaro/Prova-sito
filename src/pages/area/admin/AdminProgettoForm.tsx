@@ -20,6 +20,7 @@ interface FormProgetto {
   screenshot_url: string | null
   galleria: string[]
   prezzo_totale: string
+  incassato: string
   data_consegna: string
   stato: StatoProgetto
   pubblico: boolean
@@ -45,6 +46,7 @@ const VUOTO: FormProgetto = {
   screenshot_url: null,
   galleria: [],
   prezzo_totale: '',
+  incassato: '',
   data_consegna: '',
   stato: 'in_lavorazione',
   pubblico: false,
@@ -95,6 +97,7 @@ export default function AdminProgettoForm() {
             screenshot_url: p.screenshot_url,
             galleria: p.galleria ?? [],
             prezzo_totale: String(p.prezzo_totale ?? ''),
+            incassato: String(p.incassato ?? ''),
             data_consegna: p.data_consegna ?? '',
             stato: p.stato,
             pubblico: p.pubblico,
@@ -121,6 +124,8 @@ export default function AdminProgettoForm() {
   const collaboratori = dati?.collaboratori ?? []
   const prezzoInserito = form.prezzo_totale.trim() ? numero(form.prezzo_totale) : 0
   const prezzo = Number.isFinite(prezzoInserito) ? prezzoInserito : 0
+  const incassatoInserito = form.incassato.trim() ? numero(form.incassato) : 0
+  const incassato = Number.isFinite(incassatoInserito) ? incassatoInserito : 0
   const sommaPerc = assegnazioni.reduce((s, a) => s + (numero(a.percentuale) || 0), 0)
   const oltre100 = sommaPerc > 100
   const margine = prezzo * (1 - Math.min(sommaPerc, 100) / 100)
@@ -167,6 +172,8 @@ export default function AdminProgettoForm() {
 
     if (!form.nome.trim()) return setErrore('Il nome del progetto è obbligatorio.')
     if (!Number.isFinite(prezzoInserito) || prezzoInserito < 0) return setErrore('Prezzo non valido.')
+    if (isAdmin && (!Number.isFinite(incassatoInserito) || incassatoInserito < 0)) return setErrore('Importo incassato non valido.')
+    if (isAdmin && incassatoInserito > prezzoInserito) return setErrore("L'importo incassato non può superare il prezzo totale.")
     let url = form.url.trim()
     if (url && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = `https://${url}`
     if (url && !/^https?:\/\/[^\s/]+\.[^\s]+$/i.test(url)) return setErrore('URL del sito non valido (es. https://www.esempio.it).')
@@ -191,6 +198,8 @@ export default function AdminProgettoForm() {
         screenshot_url: form.screenshot_url,
         galleria: form.galleria,
         prezzo_totale: prezzo,
+        // I soldi incassati li gestisce solo l'admin
+        ...(isAdmin ? { incassato } : {}),
         data_consegna: form.data_consegna || null,
         stato: form.stato,
         pubblico: form.pubblico,
@@ -308,6 +317,15 @@ export default function AdminProgettoForm() {
                 <label className="label" htmlFor="prezzo">Prezzo totale (€)</label>
                 <input id="prezzo" inputMode="decimal" className="input" placeholder="0,00" value={form.prezzo_totale} onChange={(e) => set('prezzo_totale', e.target.value)} />
               </div>
+              {isAdmin && (
+                <div>
+                  <label className="label" htmlFor="incassato">Già incassato (€)</label>
+                  <input id="incassato" inputMode="decimal" className="input" placeholder="0,00" value={form.incassato} onChange={(e) => set('incassato', e.target.value)} />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Soldi già ricevuti dal cliente. Ancora da incassare: <strong className="tabular-nums">{formatEuro(Math.max(0, prezzo - incassato))}</strong>
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="label" htmlFor="data">Data consegna</label>
                 <input id="data" type="date" className="input" value={form.data_consegna} onChange={(e) => set('data_consegna', e.target.value)} />

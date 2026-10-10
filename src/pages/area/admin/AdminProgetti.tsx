@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../../auth/AuthProvider'
 import { Icon } from '../../../components/Icon'
 import { Screenshot } from '../../../components/Screenshot'
 import { BadgeStatoProgetto, Caricamento, IntestazionePagina, MessaggioErrore, Vuoto } from '../../../components/ui'
@@ -10,6 +11,7 @@ import { esegui, useQuery } from '../../../lib/useQuery'
 
 export default function AdminProgetti() {
   const navigate = useNavigate()
+  const { isAdmin } = useAuth()
   const [cerca, setCerca] = useState('')
   const [stato, setStato] = useState<StatoProgetto | ''>('')
   const [erroreAzione, setErroreAzione] = useState<string | null>(null)
@@ -84,6 +86,7 @@ export default function AdminProgetti() {
                   <th>Stato</th>
                   <th>Consegna</th>
                   <th className="text-right">Prezzo</th>
+                  {isAdmin && <th className="text-right">Incassato</th>}
                   <th className="text-right">% assegnata</th>
                   <th className="text-center">Portfolio</th>
                   <th />
@@ -108,6 +111,14 @@ export default function AdminProgetti() {
                       <td><BadgeStatoProgetto stato={p.stato} /></td>
                       <td className="whitespace-nowrap">{formatData(p.data_consegna)}</td>
                       <td className="text-right whitespace-nowrap tabular-nums">{formatEuro(p.prezzo_totale)}</td>
+                      {isAdmin && (
+                        <td className="text-right whitespace-nowrap tabular-nums">
+                          {formatEuro(p.incassato)}
+                          {Number(p.prezzo_totale) - Number(p.incassato) > 0 && (
+                            <p className="text-xs font-medium text-amber-700">ancora {formatEuro(Number(p.prezzo_totale) - Number(p.incassato))}</p>
+                          )}
+                        </td>
+                      )}
                       <td className={`text-right tabular-nums ${perc > 100 ? 'font-semibold text-red-600' : ''}`}>{formatPercentuale(perc)}</td>
                       <td className="text-center">
                         <button

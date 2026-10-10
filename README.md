@@ -65,6 +65,7 @@ Il pagamento usa **Stripe**: nessun canone mensile, solo commissione sulle vendi
 6. **Email col contratto** (facoltativo ma consigliato): account su <https://resend.com> (gratis fino a 3.000 email/mese), dominio verificato, poi  
    `npx supabase secrets set RESEND_API_KEY=re_... MAIL_FROM="Forma Web <ordini@tuodominio.it>" ADMIN_EMAIL=tua@email.it`.  
    Senza Resend il cliente vede e scarica comunque il contratto dalla sua pagina.
+   **Incassi e progetto automatico**: esegui anche [`supabase/incassi.sql`](supabase/incassi.sql) (dopo `ordini.sql`). Quando un cliente paga, il sito entra da solo tra i **Progetti** «in lavorazione» con il prezzo pieno e, come *incassato*, solo l'acconto realmente pagato. Il Riepilogo (solo admin) separa **guadagni già fatti** (siti consegnati), **in preparazione** (siti da fare), **già incassato** e **ancora da incassare**; il campo «Già incassato» si aggiorna dal form del progetto.
 7. Prova tutto con la carta di test `4242 4242 4242 4242` (chiavi `sk_test_`), poi passa alle chiavi live.
 
 > Il sito è impostato come privato (`noindex` in `index.html` e `public/robots.txt`). Per far trovare la pagina d'acquisto dai clienti su Google, rimuovi quei blocchi.

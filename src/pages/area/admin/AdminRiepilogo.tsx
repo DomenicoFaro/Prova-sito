@@ -37,6 +37,20 @@ export default function AdminRiepilogo() {
     const daPagare = guadagni.reduce((s, g) => s + Number(g.residuo), 0)
     const attivi = progetti.filter((p) => p.stato !== 'consegnato').length
 
+    // Guadagni già fatti (siti consegnati / in manutenzione) vs siti ancora in preparazione
+    const fatti = progetti.filter((p) => p.stato !== 'in_lavorazione')
+    const inPrep = progetti.filter((p) => p.stato === 'in_lavorazione')
+    const somma = (arr: Progetto[], f: (p: Progetto) => number) => arr.reduce((s, p) => s + f(p), 0)
+    const incassi = {
+      fatti: somma(fatti, (p) => Number(p.prezzo_totale)),
+      nFatti: fatti.length,
+      inPrep: somma(inPrep, (p) => Number(p.prezzo_totale)),
+      nInPrep: inPrep.length,
+      incassatoInPrep: somma(inPrep, (p) => Number(p.incassato)),
+      incassato: somma(progetti, (p) => Number(p.incassato)),
+      daIncassare: somma(progetti, (p) => Math.max(0, Number(p.prezzo_totale) - Number(p.incassato))),
+    }
+
     const perCollaboratore = new Map<string, { dovuto: number; pagato: number; residuo: number }>()
     for (const g of guadagni) {
       const c = perCollaboratore.get(g.collaboratore_id) ?? { dovuto: 0, pagato: 0, residuo: 0 }
@@ -59,7 +73,7 @@ export default function AdminRiepilogo() {
       t.progetti += 1
       perTeam.set(k, t)
     }
-    return { progetti, fatturato, dovuto, daPagare, margine: fatturato - dovuto, attivi, perCollaboratore, azienda, perTeam }
+    return { progetti, fatturato, dovuto, daPagare, margine: fatturato - dovuto, attivi, incassi, perCollaboratore, azienda, perTeam }
   }, [dati, periodo])
 
   return (
@@ -131,6 +145,21 @@ export default function AdminRiepilogo() {
             <StatCard etichetta="Margine agenzia" valore={formatEuro(calcolo.margine)} icona="chart" tono="verde" nota={calcolo.fatturato > 0 ? `${Math.round((calcolo.margine / calcolo.fatturato) * 100)}% del fatturato` : undefined} />
             <StatCard etichetta="Progetti attivi" valore={calcolo.attivi} icona="folder" tono="slate" nota="In lavorazione o manutenzione" />
           </div>
+
+          {!isSocio && (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+              <StatCard etichetta="Guadagni già fatti" valore={formatEuro(calcolo.incassi.fatti)} icona="check" tono="verde" nota={`${calcolo.incassi.nFatti} siti consegnati`} />
+              <StatCard
+                etichetta="In preparazione"
+                valore={formatEuro(calcolo.incassi.inPrep)}
+                icona="clock"
+                tono="ambra"
+                nota={`${calcolo.incassi.nInPrep} siti da fare · già incassati ${formatEuro(calcolo.incassi.incassatoInPrep)}`}
+              />
+              <StatCard etichetta="Già incassato" valore={formatEuro(calcolo.incassi.incassato)} icona="wallet" tono="verde" nota="Soldi ricevuti (acconti e saldi)" />
+              <StatCard etichetta="Ancora da incassare" valore={formatEuro(calcolo.incassi.daIncassare)} icona="euro" tono="ambra" nota="Soldi non ancora ricevuti" />
+            </div>
+          )}
 
           <div className="grid gap-6 xl:grid-cols-5">
             <section className="card overflow-hidden xl:col-span-3">

@@ -30,6 +30,10 @@ export interface Progetto {
   screenshot_url: string | null
   galleria: string[]
   prezzo_totale: number
+  /** Soldi già ricevuti dal cliente (acconto, saldo…): da incassare = prezzo_totale - incassato. */
+  incassato: number
+  /** Ordine del sito (ordini_siti) da cui nasce il progetto, se pagato online. */
+  ordine_id: string | null
   data_consegna: string | null
   stato: StatoProgetto
   pubblico: boolean
