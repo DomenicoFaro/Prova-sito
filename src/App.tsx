@@ -10,6 +10,8 @@ import Home from './pages/public/Home'
 // Parte pubblica secondaria e area riservata caricate su richiesta
 const Portfolio = lazy(() => import('./pages/public/Portfolio'))
 const ProgettoDettaglio = lazy(() => import('./pages/public/ProgettoDettaglio'))
+const SitoSuMisura = lazy(() => import('./pages/public/SitoSuMisura'))
+const Ordine = lazy(() => import('./pages/public/Ordine'))
 const NotFound = lazy(() => import('./pages/public/NotFound'))
 const Login = lazy(() => import('./pages/auth/Login'))
 const PasswordDimenticata = lazy(() => import('./pages/auth/PasswordDimenticata'))
@@ -27,6 +29,7 @@ const AdminProgettoForm = lazy(() => import('./pages/area/admin/AdminProgettoFor
 const AdminPagamenti = lazy(() => import('./pages/area/admin/AdminPagamenti'))
 const AdminCollaboratori = lazy(() => import('./pages/area/admin/AdminCollaboratori'))
 const AdminVendite = lazy(() => import('./pages/area/admin/AdminVendite'))
+const AdminPreventivi = lazy(() => import('./pages/area/admin/AdminPreventivi'))
 const AdminOpportunita = lazy(() => import('./pages/area/admin/AdminOpportunita'))
 const AdminVistaCome = lazy(() => import('./pages/area/admin/AdminVistaCome'))
 const AdminVistaComeDettaglio = lazy(() =>
@@ -43,6 +46,8 @@ export default function App() {
               <Route index element={<Home />} />
               <Route path="portfolio" element={<Portfolio />} />
               <Route path="portfolio/:id" element={<ProgettoDettaglio />} />
+              <Route path="sito-su-misura" element={<SitoSuMisura />} />
+              <Route path="ordine/:token" element={<Ordine />} />
               <Route path="*" element={<NotFound />} />
             </Route>
 
@@ -66,6 +71,7 @@ export default function App() {
                   <Route path="progetti" element={<AdminProgetti />} />
                   <Route path="progetti/nuovo" element={<AdminProgettoForm />} />
                   <Route path="progetti/:id" element={<AdminProgettoForm />} />
+                  <Route path="preventivi" element={<AdminPreventivi />} />
                   <Route path="pagamenti" element={<AdminPagamenti />} />
                   <Route path="vendite" element={<AdminVendite />} />
                   <Route path="opportunita" element={<AdminOpportunita />} />

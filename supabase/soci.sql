@@ -100,6 +100,11 @@ begin
     return new;
   end if;
 
+  -- Creazione account in corso (impostato solo da admin_crea_account, valido per questa transazione)
+  if current_setting('app.creazione_account', true) = 'on' then
+    return new;
+  end if;
+
   if public.is_socio() and old.id <> auth.uid()
      and old.responsabile_id = auth.uid() and old.ruolo::text = 'collaboratore' then
     if new.ruolo::text <> 'collaboratore'
@@ -252,10 +257,15 @@ begin
 
   v_id := public._crea_utente_auth(p_email, p_password, p_nome);
 
+  -- Autorizza il trigger protect_profile_fields solo per questo aggiornamento
+  perform set_config('app.creazione_account', 'on', true);
+
   update public.profiles
      set nome = trim(p_nome), ruolo = p_ruolo, percentuale_default = p_percentuale,
          attivo = true, responsabile_id = v_responsabile
    where id = v_id;
+
+  perform set_config('app.creazione_account', 'off', true);
 
   return v_id;
 end;

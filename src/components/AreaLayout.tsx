@@ -17,6 +17,7 @@ const VOCI_ADMIN: Voce[] = [
   { to: '/area/admin', label: 'Riepilogo', icona: 'chart', end: true },
   { to: '/area/admin/progetti', label: 'Progetti', icona: 'folder' },
   { to: '/area/admin/vendite', label: 'Vendite', icona: 'handshake' },
+  { to: '/area/admin/preventivi', label: 'Preventivi', icona: 'cart' },
   { to: '/area/admin/opportunita', label: 'Opportunità', icona: 'pin' },
   { to: '/area/admin/pagamenti', label: 'Pagamenti', icona: 'wallet' },
   { to: '/area/admin/collaboratori', label: 'Collaboratori', icona: 'users' },
@@ -25,7 +26,8 @@ const VOCI_ADMIN: Voce[] = [
 
 // Il socio ha la stessa area dell'admin. Le opportunità condivise le gestisce l'admin:
 // il socio usa la pagina dei collaboratori, dove può aggiungere i propri link.
-const VOCI_SOCIO: Voce[] = VOCI_ADMIN.map((v) =>
+// I preventivi dei clienti sono solo dell'admin.
+const VOCI_SOCIO: Voce[] = VOCI_ADMIN.filter((v) => v.to !== '/area/admin/preventivi').map((v) =>
   v.to === '/area/admin/opportunita' ? { ...v, to: '/area/opportunita' } : v,
 )
 

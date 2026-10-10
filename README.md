@@ -47,6 +47,28 @@ Apri una nuova query, incolla [`supabase/soci.sql`](supabase/soci.sql) e premi *
 - **Prezzi**: listino interno (non pubblico), visibile a tutti quelli che hanno un account su **Area riservata → Prezzi**. Admin e soci lo modificano; i prezzi possono essere intervalli (500–600) in € o $.
 - **Opportunità**: organizzate per categorie. Ogni collaboratore ha anche «Le mie opportunità»; l'admin vede le cartelle di tutti i collaboratori, il socio solo quelle del suo team.
 
+### 2d. Acquisto siti dai clienti (preventivo → contratto → pagamento)
+Pagina pubblica **Acquista il tuo sito** (`/sito-su-misura`): il cliente descrive il sito, ricevi la richiesta in **Area riservata → Preventivi**, rispondi con prezzo/acconto/giorni di consegna e il cliente, dal suo link privato (`/ordine/<codice>`), legge il contratto, firma con nome e cognome, paga con **Stripe** e riceve il contratto compilato (sulla pagina e via email).
+
+Il pagamento usa **Stripe**: nessun canone mensile, solo commissione sulle vendite (circa 1,5% + 0,25 € per carte europee: verifica i prezzi aggiornati su stripe.com/it/pricing).
+
+1. **Database**: SQL Editor → incolla ed esegui [`supabase/ordini.sql`](supabase/ordini.sql).
+2. **Contratto**: Area riservata → Preventivi → *Modello contratto*. C'è un testo di partenza: sostituiscilo con il tuo (i segnaposto `{{cliente_nome}}`, `{{prezzo}}`… vengono riempiti da soli).
+3. **Stripe**: crea l'account su <https://stripe.com>, prendi la *Secret key* (Developers → API keys; usa `sk_test_…` per provare).
+4. **Edge Functions** (Supabase CLI):
+   ```bash
+   npx supabase secrets set STRIPE_SECRET_KEY=sk_live_... SITE_URL=https://tuodominio.it
+   npx supabase functions deploy crea-checkout
+   npx supabase functions deploy stripe-webhook --no-verify-jwt
+   ```
+5. **Webhook Stripe**: Developers → Webhooks → *Add endpoint* con URL `https://<ID>.supabase.co/functions/v1/stripe-webhook` ed eventi `checkout.session.completed` e `checkout.session.async_payment_succeeded`. Copia il *Signing secret* (`whsec_…`) e: `npx supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...`
+6. **Email col contratto** (facoltativo ma consigliato): account su <https://resend.com> (gratis fino a 3.000 email/mese), dominio verificato, poi  
+   `npx supabase secrets set RESEND_API_KEY=re_... MAIL_FROM="Forma Web <ordini@tuodominio.it>" ADMIN_EMAIL=tua@email.it`.  
+   Senza Resend il cliente vede e scarica comunque il contratto dalla sua pagina.
+7. Prova tutto con la carta di test `4242 4242 4242 4242` (chiavi `sk_test_`), poi passa alle chiavi live.
+
+> Il sito è impostato come privato (`noindex` in `index.html` e `public/robots.txt`). Per far trovare la pagina d'acquisto dai clienti su Google, rimuovi quei blocchi.
+
 ### 3. Configura l'autenticazione
 In **Authentication → Sign In / Providers**:
 - **Disattiva "Allow new users to sign up"**. Gli account li crea solo l'admin, e il database comunque assegna sempre il ruolo `collaboratore` ai nuovi utenti.
