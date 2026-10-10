@@ -63,6 +63,8 @@ create table if not exists public.ordini_siti (
 );
 
 alter table public.ordini_siti add column if not exists email_inviata boolean not null default false;
+alter table public.ordini_siti add column if not exists notifica_richiesta_il timestamptz;
+alter table public.ordini_siti add column if not exists preventivo_email_il timestamptz;
 
 create index if not exists ordini_siti_stato_idx on public.ordini_siti (stato, created_at desc);
 create index if not exists ordini_siti_email_idx on public.ordini_siti (lower(cliente_email), created_at desc);

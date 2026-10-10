@@ -20,8 +20,6 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    /* Spazio per la barra del totale fissa in basso (modulo d'acquisto): niente resta nascosto sotto */
-    scroll-padding-bottom: 6rem;
     -webkit-tap-highlight-color: transparent;
   }
   body {
@@ -107,11 +105,6 @@
   animation: dissolvenza 0.9s ease-out both;
 }
 
-/* Cambio di passaggio nel modulo d'acquisto */
-.passo-entra {
-  animation: dissolvenza 0.35s ease-out both;
-}
-
 /* Bagliore blu dietro al logo che "respira" piano */
 @keyframes bagliore {
   0%,
@@ -148,7 +141,6 @@
 @media (prefers-reduced-motion: reduce) {
   .logo-entrata,
   .dissolvenza,
-  .passo-entra,
   .bagliore {
     animation: none;
   }

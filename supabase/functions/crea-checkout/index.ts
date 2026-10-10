@@ -25,10 +25,6 @@ Deno.serve(async (req) => {
     if (!o) return json({ error: 'Ordine non trovato.' }, 404)
     if (o.stato === 'pagato') return json({ error: 'Ordine già pagato.' }, 409)
     if (o.stato !== 'preventivo_inviato' || !o.prezzo) return json({ error: 'Il preventivo non è ancora disponibile.' }, 409)
-    // Richiesta in verifica manuale: si paga solo dopo che FormaWeb ha confermato l'importo (preventivo_il lo imposta l'admin)
-    if (o.approvazione_manuale && !o.preventivo_il) {
-      return json({ error: "Il pagamento sarà disponibile appena FormaWeb avrà confermato l'importo." }, 409)
-    }
 
     const importo = Math.round(Number(o.acconto ?? o.prezzo) * 100)
     if (!(importo >= 50)) return json({ error: 'Importo non valido.' }, 400)
@@ -48,13 +44,9 @@ Deno.serve(async (req) => {
       'line_items[0][quantity]': '1',
       'line_items[0][price_data][currency]': 'eur',
       'line_items[0][price_data][unit_amount]': String(importo),
-      'line_items[0][price_data][product_data][name]': `${o.tipo_ordine === 'prova' ? 'Prova di un mese' : 'Sito web'} – ordine ${numero}`,
+      'line_items[0][price_data][product_data][name]': `Sito web – ordine ${numero}`,
       'line_items[0][price_data][product_data][description]':
-        o.tipo_ordine === 'prova'
-          ? 'Mese di prova (il resto è dovuto dopo il mese, solo se il sito ti è piaciuto)'
-          : o.acconto && Number(o.acconto) < Number(o.prezzo)
-            ? 'Acconto (il saldo è dovuto alla consegna)'
-            : 'Pagamento completo',
+        o.acconto && Number(o.acconto) < Number(o.prezzo) ? 'Acconto (il saldo è dovuto alla consegna)' : 'Pagamento completo',
       customer_email: o.cliente_email,
       client_reference_id: o.id,
       'metadata[ordine_id]': o.id,
