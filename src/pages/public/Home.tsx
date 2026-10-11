@@ -38,12 +38,20 @@ export default function Home() {
               <Icon name="cart" className="h-4 w-4" /> Acquista il tuo sito
             </Link>
             <Link to="/prova-un-mese" className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
-              <Icon name="clock" className="h-4 w-4" /> Prova un mese
+              <Icon name="clock" className="h-4 w-4" /> Prova il tuo sito
             </Link>
             <Link to={session ? '/area' : '/login'} className="btn px-6 py-3 text-base text-white ring-1 ring-white/25 hover:bg-white/10">
               <Icon name="lock" className="h-4 w-4" /> Area riservata
             </Link>
           </div>
+        </div>
+        <div className="relative container-sito pb-6 text-center">
+          <p className="mx-auto max-w-2xl text-base text-slate-300">
+            Forma Web realizza siti web su misura per attività e professionisti. Prova il tuo sito e acquistalo online.
+          </p>
+          <p className="mx-auto mt-3 inline-block rounded-full bg-white/10 px-4 py-1.5 text-sm text-sky-300">
+            Abbiamo cambiato dominio: ora siamo su <strong>formaweb.shop</strong>
+          </p>
         </div>
         <div className="relative h-24 bg-gradient-to-b from-black to-white sm:h-32" aria-hidden="true" />
       </section>

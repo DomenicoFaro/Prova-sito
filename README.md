@@ -2,7 +2,7 @@
 
 Il sito ha due parti:
 
-- **Parte pubblica** (sito privato, non indicizzato): home, portfolio con filtri per categoria e pagina di dettaglio di ogni progetto.
+- **Parte pubblica** (indicizzata da Google, dominio ufficiale **formaweb.shop**): home, portfolio con filtri per categoria e pagina di dettaglio di ogni progetto.
 - **Area riservata**:
   - **Admin**: gestisce progetti, assegnazioni con le percentuali, pagamenti e collaboratori, e può aprire la "vista come" di un collaboratore.
   - **Collaboratore**: vede, in sola lettura, solo i propri siti, i propri guadagni e i pagamenti ricevuti.
@@ -57,13 +57,13 @@ Il pagamento usa **Stripe**: nessun canone mensile, solo commissione sulle vendi
 3. **Stripe**: crea l'account su <https://stripe.com>, prendi la *Secret key* (Developers → API keys; usa `sk_test_…` per provare).
 4. **Edge Functions** (Supabase CLI):
    ```bash
-   npx supabase secrets set STRIPE_SECRET_KEY=sk_live_... SITE_URL=https://tuodominio.it
+   npx supabase secrets set STRIPE_SECRET_KEY=sk_live_... SITE_URL=https://formaweb.shop
    npx supabase functions deploy crea-checkout
    npx supabase functions deploy stripe-webhook --no-verify-jwt
    ```
 5. **Webhook Stripe**: Developers → Webhooks → *Add endpoint* con URL `https://<ID>.supabase.co/functions/v1/stripe-webhook` ed eventi `checkout.session.completed` e `checkout.session.async_payment_succeeded`. Copia il *Signing secret* (`whsec_…`) e: `npx supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...`
 6. **Email col contratto** (facoltativo ma consigliato): account su <https://resend.com> (gratis fino a 3.000 email/mese), dominio verificato, poi  
-   `npx supabase secrets set RESEND_API_KEY=re_... MAIL_FROM="Forma Web <ordini@tuodominio.it>" ADMIN_EMAIL=tua@email.it`.  
+   `npx supabase secrets set RESEND_API_KEY=re_... MAIL_FROM="Forma Web <ordini@formaweb.shop>" ADMIN_EMAIL=tua@email.it`.  
    Senza Resend il cliente vede e scarica comunque il contratto dalla sua pagina.
    **Incassi e progetto automatico**: esegui anche [`supabase/incassi.sql`](supabase/incassi.sql) (dopo `ordini.sql`). Quando un cliente paga, il sito entra da solo tra i **Progetti** «in lavorazione» con il prezzo pieno e, come *incassato*, solo l'acconto realmente pagato. Il Riepilogo (solo admin) separa **guadagni già fatti** (siti consegnati), **in preparazione** (siti da fare), **già incassato** e **ancora da incassare**; il campo «Già incassato» si aggiorna dal form del progetto.
    **Listino prezzi (solo area riservata)**: esegui [`supabase/prezzi_abbonamenti.sql`](supabase/prezzi_abbonamenti.sql) (dopo `soci.sql`). Il listino Siti web / Servizi / Abbonamenti lo vedono **solo** collaboratori, soci e admin, da *Area riservata → Prezzi*: non c'è nessuna pagina pubblica né pulsante nella home (`/prezzi` porta al login). Se avevi eseguito la vecchia versione «pubblica», questo script toglie l'accesso ai visitatori.
@@ -90,7 +90,7 @@ npm test          # entrambi
 ```
 Non sostituiscono una prova vera: **Stripe, le Edge Functions, le email e i permessi reali di Supabase Storage vanno provati con un ordine di prova.**
 
-> Il sito è impostato come privato (`noindex` in `index.html` e `public/robots.txt`). Per far trovare la pagina d'acquisto dai clienti su Google, rimuovi quei blocchi.
+> Il sito è indicizzabile: `index.html` e `public/robots.txt` consentono Google; le pagine private (`/area`, `/login`, `/ordine/…`) sono `noindex`. Dominio ufficiale: `https://formaweb.shop` (il `www` viene reindirizzato in `vercel.json`).
 
 ### 3. Configura l'autenticazione
 In **Authentication → Sign In / Providers**:
@@ -98,8 +98,8 @@ In **Authentication → Sign In / Providers**:
 - Lascia attivo il provider **Email**.
 
 In **Authentication → URL Configuration**:
-- **Site URL**: l'indirizzo del sito, per esempio `https://tuodominio.it`. In locale usa `http://localhost:5173`.
-- **Redirect URLs**: aggiungi `http://localhost:5173/**` e `https://tuodominio.it/**`. Se usi le anteprime Vercel, aggiungi anche `https://*.vercel.app/**`.
+- **Site URL**: l'indirizzo del sito, per esempio `https://formaweb.shop`. In locale usa `http://localhost:5173`.
+- **Redirect URLs**: aggiungi `http://localhost:5173/**` e `https://formaweb.shop/**`. Se usi le anteprime Vercel, aggiungi anche `https://*.vercel.app/**`.
 
 Facoltativo: in **Authentication → Emails** puoi tradurre in italiano i testi delle email di invito e di reset.
 

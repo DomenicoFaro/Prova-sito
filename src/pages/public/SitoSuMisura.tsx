@@ -254,7 +254,14 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
 
   return (
     <>
-      <Seo titolo={prova ? 'Prova un mese' : 'Acquista il tuo sito'} />
+      <Seo
+        titolo={prova ? 'Prova il tuo sito' : 'Acquista il tuo sito'}
+        descrizione={
+          prova
+            ? 'Prova il tuo sito per un mese su formaweb.shop: scegli il sito su misura, ricevi il preventivo e parti dalla prova.'
+            : 'Acquista il tuo sito web su misura su formaweb.shop: configura il sito, ricevi il preventivo, firma il contratto e paga online.'
+        }
+      />
       <section className="bg-black pt-10 pb-12 text-center text-white">
         <div className="container-sito">
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{prova ? 'Prova il tuo sito per un mese' : 'Il tuo sito, su misura'}</h1>

@@ -3,7 +3,7 @@
 //
 // Da pubblicare SENZA verifica JWT:  supabase functions deploy stripe-webhook --no-verify-jwt
 // Secret: STRIPE_SECRET_KEY (non serve qui), STRIPE_WEBHOOK_SECRET, SITE_URL
-// Facoltativi (email): RESEND_API_KEY, MAIL_FROM (es. "Forma Web <ordini@tuodominio.it>"), ADMIN_EMAIL
+// Facoltativi (email): RESEND_API_KEY, MAIL_FROM (es. "Forma Web <ordini@formaweb.shop>"), ADMIN_EMAIL
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const enc = new TextEncoder()

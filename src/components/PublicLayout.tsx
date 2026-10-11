@@ -8,7 +8,7 @@ const VOCI = [
   { to: '/', label: 'Home', end: true },
   { to: '/portfolio', label: 'Portfolio' },
   { to: '/sito-su-misura', label: 'Acquista il tuo sito' },
-  { to: '/prova-un-mese', label: 'Prova un mese' },
+  { to: '/prova-un-mese', label: 'Prova il tuo sito' },
 ]
 
 /** Logo su fondo nero: va messo su superfici nere, dove si fonde con lo sfondo. */
@@ -100,7 +100,7 @@ export function PublicLayout() {
               Area riservata
             </Link>
           </nav>
-          <span>Sito privato</span>
+          <span>© {new Date().getFullYear()} Forma Web · formaweb.shop</span>
         </div>
       </footer>
     </div>
