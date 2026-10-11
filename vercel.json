@@ -1,11 +1,3 @@
 {
-  "redirects": [
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "www.formaweb.com" }],
-      "destination": "https://formaweb.com/$1",
-      "permanent": true
-    }
-  ],
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

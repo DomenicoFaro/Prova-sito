@@ -25,7 +25,7 @@ export default function PasswordDimenticata() {
 
   return (
     <AuthCard titolo="Password dimenticata" sottotitolo="Ti invieremo un link per impostarne una nuova.">
-      <Seo titolo="Password dimenticata" noindex />
+      <Seo titolo="Password dimenticata" />
       {inviata ? (
         <div className="space-y-4">
           <MessaggioSuccesso>

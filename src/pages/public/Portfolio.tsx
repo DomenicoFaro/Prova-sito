@@ -33,7 +33,7 @@ export default function Portfolio() {
 
   return (
     <>
-      <Seo titolo="Portfolio: siti web realizzati" descrizione="I siti web realizzati da Forma Web (formaweb.com) per attività e professionisti. Guarda i progetti e prova il tuo sito." />
+      <Seo titolo="Tutti i progetti" />
       <section className="border-b border-slate-100 bg-gradient-to-b from-brand-50/60 to-white">
         <div className="container-sito py-14 sm:py-20">
           <Reveal>

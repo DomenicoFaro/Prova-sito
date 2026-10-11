@@ -1,4 +1,5 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
+import type { Preventivo } from './configuratore'
 import { supabase } from './supabase'
 
 export type StatoOrdine = 'richiesto' | 'preventivo_inviato' | 'pagato' | 'annullato'
@@ -43,7 +44,20 @@ export interface OrdineSito {
   importo_pagato: number | null
   pagato_il: string | null
   contratto_finale: string | null
-  preventivo_email_il: string | null
+  /** Configuratore (supabase/configuratore.sql). Null per gli ordini fatti con il vecchio modulo. */
+  tipologia_codice: string | null
+  pagine_numero: number | null
+  urgenza_richiesta: boolean
+  urgenza_confermata: boolean
+  totale_indicativo: number | null
+  dettaglio_preventivo: Preventivo | null
+  approvazione_manuale: boolean
+  allegati: string[]
+  /** «Prova un mese»: il cliente paga 100 € + extra scontati, il resto dopo il mese. */
+  tipo_ordine: 'standard' | 'prova'
+  metodo_pagamento: 'stripe' | 'contanti'
+  prova_fino_al: string | null
+  saldo_dopo_prova: number | null
   created_at: string
 }
 
@@ -59,6 +73,8 @@ export interface OrdineCliente {
   funzionalita: string[]
   dominio: string
   descrizione: string
+  budget?: string
+  scadenza?: string
   prezzo: number | null
   acconto: number | null
   consegna_giorni: number | null
@@ -66,25 +82,19 @@ export interface OrdineCliente {
   pagato_il: string | null
   importo_pagato: number | null
   created_at: string
+  totale_indicativo?: number | null
+  dettaglio_preventivo?: Preventivo | null
+  /** Il prezzo va verificato e confermato a mano da FormaWeb prima del pagamento. */
+  approvazione_manuale?: boolean
+  urgenza_richiesta?: boolean
+  urgenza_confermata?: boolean
+  n_allegati?: number
+  tipo_ordine?: 'standard' | 'prova'
+  metodo_pagamento?: 'stripe' | 'contanti'
+  prova_fino_al?: string | null
+  saldo_dopo_prova?: number | null
   contratto: string | null
 }
-
-export const FUNZIONALITA_SITO = [
-  'Modulo di contatto',
-  'Galleria immagini',
-  'Blog / notizie',
-  'Prenotazioni online',
-  'Negozio online (e-commerce)',
-  'Area clienti con login',
-  'Newsletter',
-  'Mappa e orari',
-  'Collegamento ai social',
-  'Chat WhatsApp',
-  'Sito multilingua',
-  'SEO di base',
-] as const
-
-export const PAGINE_SITO = ['1 pagina', '2–5 pagine', '6–10 pagine', '11–20 pagine', 'Più di 20 pagine'] as const
 
 /** Memoria locale dei link agli ordini, così il cliente li ritrova dallo stesso dispositivo. */
 const CHIAVE_ORDINI = 'ordini-cliente'
@@ -124,22 +134,6 @@ export async function erroreFunzione(e: unknown): Promise<string> {
     }
   }
   return 'Impossibile contattare il server dei pagamenti. Riprova tra poco.'
-}
-
-/** Avvisa admin e cliente via email della nuova richiesta. Un errore qui non deve bloccare il cliente. */
-export async function notificaRichiesta(token: string) {
-  try {
-    await supabase.functions.invoke('notifica-richiesta', { body: { token } })
-  } catch {
-    /* l'ordine è comunque stato creato */
-  }
-}
-
-/** Manda al cliente l'email con il preventivo. Restituisce l'esito da mostrare all'admin. */
-export async function inviaEmailPreventivo(ordineId: string): Promise<{ inviata: boolean; motivo: string | null }> {
-  const { data, error } = await supabase.functions.invoke('invia-preventivo', { body: { ordine_id: ordineId } })
-  if (error) return { inviata: false, motivo: await erroreFunzione(error) }
-  return { inviata: Boolean(data?.inviata), motivo: data?.motivo ?? null }
 }
 
 export async function avviaPagamento(token: string, firmatario: string): Promise<string> {

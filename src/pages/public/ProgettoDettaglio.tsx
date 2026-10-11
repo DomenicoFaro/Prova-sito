@@ -31,7 +31,7 @@ export default function ProgettoDettaglio() {
   if (!p)
     return (
       <div className="container-sito py-16">
-        <Seo titolo="Progetto non trovato" noindex />
+        <Seo titolo="Progetto non trovato" />
         <Vuoto titolo="Progetto non trovato">
           <Link to="/portfolio" className="font-semibold text-brand-700">
             Torna al portfolio

@@ -39,10 +39,11 @@ const VUOTO: FormPrezzo = {
 
 const SEZIONI: { tipo: TipoPrezzo; titolo: string }[] = [
   { tipo: 'sito', titolo: 'Siti web' },
-  { tipo: 'servizio', titolo: 'Servizi e abbonamenti' },
+  { tipo: 'servizio', titolo: 'Servizi' },
+  { tipo: 'abbonamento', titolo: 'Abbonamenti' },
 ]
 
-/** Listino interno: lo vedono tutti quelli che hanno un account; lo modificano admin e soci. */
+/** Listino interno: lo vedono tutti quelli che hanno un account (non è pubblico); lo modificano admin e soci. */
 export default function Prezzi() {
   const { isGestore } = useAuth()
   const [modale, setModale] = useState<'nuovo' | Prezzo | null>(null)
@@ -150,8 +151,8 @@ export default function Prezzi() {
         titolo="Prezzi"
         sottotitolo={
           isGestore
-            ? 'Il listino interno: lo vedono tutti i collaboratori, non è pubblico. Le voci nascoste le vedi solo tu.'
-            : 'Il listino dei nostri siti e servizi. Usalo come riferimento quando parli con un cliente.'
+            ? 'Il listino interno: lo vedono tutti i collaboratori, non è pubblico. Le voci nascoste le vedi solo tu e i soci.'
+            : 'Il listino dei nostri siti, servizi e abbonamenti. Usalo come riferimento quando parli con un cliente.'
         }
         azioni={
           isGestore && (
@@ -241,7 +242,8 @@ export default function Prezzi() {
               <label className="label" htmlFor="pt">Tipo</label>
               <select id="pt" className="input" value={form.tipo} onChange={(e) => set('tipo', e.target.value as TipoPrezzo)}>
                 <option value="sito">Sito web</option>
-                <option value="servizio">Servizio / abbonamento</option>
+                <option value="servizio">Servizio</option>
+                <option value="abbonamento">Abbonamento</option>
               </select>
             </div>
             <div>

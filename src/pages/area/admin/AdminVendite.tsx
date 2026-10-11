@@ -116,6 +116,7 @@ export default function AdminVendite() {
             categoria: v.tipo_sito,
             descrizione: v.note,
             prezzo_totale: v.prezzo,
+            incassato: Math.min(Number(v.acconto), Number(v.prezzo)),
             data_consegna: v.consegna_prevista,
             stato: 'in_lavorazione',
             pubblico: false,

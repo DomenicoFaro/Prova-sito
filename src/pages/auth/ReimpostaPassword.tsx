@@ -31,7 +31,7 @@ export default function ReimpostaPassword() {
 
   return (
     <AuthCard titolo="Imposta la password" sottotitolo="Scegli una nuova password per accedere all'area riservata.">
-      <Seo titolo="Imposta la password" noindex />
+      <Seo titolo="Imposta la password" />
       {!session ? (
         <div className="space-y-4">
           <MessaggioErrore>Il link non è valido o è scaduto. Richiedine uno nuovo.</MessaggioErrore>

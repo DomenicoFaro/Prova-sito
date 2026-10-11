@@ -30,6 +30,12 @@ export interface Progetto {
   screenshot_url: string | null
   galleria: string[]
   prezzo_totale: number
+  /** Soldi già ricevuti dal cliente (acconto, saldo…): da incassare = prezzo_totale - incassato. */
+  incassato: number
+  /** Progetto in «Prova un mese» fino a questa data (il resto si incassa dopo). */
+  prova_fino_al: string | null
+  /** Ordine del sito (ordini_siti) da cui nasce il progetto, se pagato online. */
+  ordine_id: string | null
   data_consegna: string | null
   stato: StatoProgetto
   pubblico: boolean
@@ -161,9 +167,9 @@ export interface OpportunitaPresa {
   scade_il: string
 }
 
-export type TipoPrezzo = 'sito' | 'servizio'
+export type TipoPrezzo = 'sito' | 'servizio' | 'abbonamento'
 
-/** Riga della tabella `prezzi` (supabase/soci.sql): il listino interno, visibile solo a chi ha un account. */
+/** Riga della tabella `prezzi` (supabase/soci.sql + prezzi_abbonamenti.sql): il listino interno, visibile solo a chi ha un account. */
 export interface Prezzo {
   id: string
   tipo: TipoPrezzo
