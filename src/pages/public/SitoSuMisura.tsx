@@ -162,7 +162,9 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
   }
 
   function scegliTipologia(t: VoceConfiguratore) {
-    set({ tipologia: t.codice, pagine: Math.max(b.pagine, t.pagine_incluse, 1) })
+    if (t.codice === b.tipologia) return
+    // Cambiando tipo di sito le pagine si riallineano a quelle incluse nel nuovo tipo (anche se sono meno).
+    set({ tipologia: t.codice, pagine: Math.min(Math.max(t.pagine_incluse, 1), MAX_PAGINE) })
   }
 
   function cambiaQuantita(codice: string, q: number, max = MAX_QUANTITA) {
