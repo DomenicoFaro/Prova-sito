@@ -49,9 +49,6 @@ export default function Home() {
           <p className="mx-auto max-w-2xl text-base text-slate-300">
             Forma Web realizza siti web su misura per attività e professionisti. Prova il tuo sito e acquistalo online.
           </p>
-          <p className="mx-auto mt-3 inline-block rounded-full bg-white/10 px-4 py-1.5 text-sm text-sky-300">
-            Abbiamo cambiato dominio: ora siamo su <strong>formaweb.shop</strong>
-          </p>
         </div>
         <div className="relative h-24 bg-gradient-to-b from-black to-white sm:h-32" aria-hidden="true" />
       </section>
