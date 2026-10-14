@@ -103,7 +103,17 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
         })
         .eq('id', ordine.id)
       if (error) throw error
-      setEsito(nuovoStato === 'preventivo_inviato' ? 'Preventivo inviato: copia il link e mandalo al cliente.' : 'Salvato.')
+      if (nuovoStato === 'preventivo_inviato') {
+        // Email al cliente con il link: se non parte, resta il link da copiare a mano
+        const { data: r, error: errMail } = await supabase.functions.invoke('invia-preventivo', { body: { id: ordine.id } })
+        setEsito(
+          !errMail && r?.inviata
+            ? `Preventivo inviato: il cliente ha ricevuto la email a ${ordine.cliente_email}.`
+            : 'Preventivo salvato, ma la email al cliente non è partita: copia il link e mandalo a mano.',
+        )
+      } else {
+        setEsito('Salvato.')
+      }
       onSalvato()
     } catch (e) {
       setErrore(messaggioErrore(e))
