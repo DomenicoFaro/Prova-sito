@@ -3,8 +3,9 @@
 //
 // Da pubblicare SENZA verifica JWT:  supabase functions deploy stripe-webhook --no-verify-jwt
 // Secret: STRIPE_SECRET_KEY (non serve qui), STRIPE_WEBHOOK_SECRET, SITE_URL
-// Facoltativi (email): RESEND_API_KEY, MAIL_FROM (es. "Forma Web <ordini@formaweb.shop>"), ADMIN_EMAIL
+// Facoltativi (email): RESEND_API_KEY, MAIL_FROM (es. "Forma Web <ordini@formaweb.shop>"), ADMIN_EMAIL, MAIL_REPLY_TO
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { esc, euro, inviaEmail, numeroOrdine } from '../_shared/email.ts'
 
 const enc = new TextEncoder()
 
@@ -32,8 +33,6 @@ async function firmaValida(corpo: string, header: string | null, segreto: string
   return attese.some((v) => uguali(v, calcolata))
 }
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-
 /** Testo del contratto → HTML ("# Titolo" = titolo, riga vuota = nuovo paragrafo). */
 function contrattoHtml(testo: string, titolo: string) {
   const corpo = testo
@@ -48,25 +47,6 @@ function contrattoHtml(testo: string, titolo: string) {
   return `<!doctype html><html lang="it"><head><meta charset="utf-8"><title>${esc(titolo)}</title>
 <style>body{font:15px/1.6 Georgia,serif;max-width:760px;margin:40px auto;padding:0 20px;color:#111}h2{font:700 16px/1.4 Arial,sans-serif;margin:1.6em 0 .3em}p{margin:.3em 0}</style>
 </head><body>${corpo}</body></html>`
-}
-
-async function inviaEmail(a: string, oggetto: string, html: string, allegato?: { nome: string; contenuto: string }) {
-  const chiave = Deno.env.get('RESEND_API_KEY')
-  const da = Deno.env.get('MAIL_FROM')
-  if (!chiave || !da) return false
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${chiave}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: da,
-      to: [a],
-      subject: oggetto,
-      html,
-      attachments: allegato ? [{ filename: allegato.nome, content: allegato.contenuto }] : undefined,
-    }),
-  })
-  if (!res.ok) console.error('Resend:', res.status, await res.text())
-  return res.ok
 }
 
 function base64Utf8(testo: string) {
@@ -110,19 +90,50 @@ Deno.serve(async (req) => {
   // Email solo la prima volta (il webhook può arrivare due volte)
   if (o.email_inviata) return new Response('ok')
 
-  const numero = `W-${String(o.numero).padStart(5, '0')}`
+  const numero = numeroOrdine(o.numero)
   const html = contrattoHtml(o.contratto_finale, `Contratto ${numero}`)
   const link = `${Deno.env.get('SITE_URL')?.replace(/\/+$/, '')}/ordine/${o.token}`
 
-  const inviata = await inviaEmail(
-    o.cliente_email,
-    `Il tuo contratto – ordine ${numero}`,
-    `<p>Ciao ${esc(o.cliente_nome)},</p><p>grazie per il pagamento! In allegato trovi il contratto compilato con i dati del tuo ordine <strong>${numero}</strong>. Puoi anche rivederlo e scaricarlo in ogni momento da <a href="${link}">questa pagina</a>.</p><p>Ti contatteremo a breve per iniziare il lavoro.</p>`,
-    { nome: `Contratto ${numero}.html`, contenuto: base64Utf8(html) },
-  )
+  const inviata = await inviaEmail({
+    a: o.cliente_email,
+    oggetto: `Pagamento ricevuto e contratto – ordine ${numero}`,
+    contenuto: {
+      anteprima: `Grazie ${o.cliente_nome}! Il tuo contratto è in allegato.`,
+      titolo: 'Grazie, pagamento ricevuto!',
+      intro: [
+        `Ciao ${o.cliente_nome}, abbiamo ricevuto il tuo pagamento e il tuo ordine è confermato.`,
+        'In allegato trovi il contratto compilato con i dati del tuo ordine. Puoi rivederlo e scaricarlo in qualsiasi momento dalla pagina del tuo ordine.',
+      ],
+      dettagli: [
+        ['Ordine', numero],
+        ['Importo pagato', euro(o.importo_pagato)],
+        ['Prezzo totale', euro(o.prezzo)],
+      ],
+      pulsante: { testo: 'Vedi il tuo ordine', url: link },
+      chiusura: ['Ti contatteremo a breve per iniziare il lavoro. Se hai domande, rispondi pure a questa email.'],
+    },
+    allegato: { nome: `Contratto ${numero}.html`, contenuto: base64Utf8(html) },
+  })
   const admin = Deno.env.get('ADMIN_EMAIL')
   if (admin) {
-    await inviaEmail(admin, `Nuovo ordine pagato ${numero}`, `<p>${esc(o.cliente_nome)} ha pagato l'ordine ${numero}.</p><p><a href="${link}">Apri ordine</a></p>`)
+    await inviaEmail({
+      a: admin,
+      rispondiA: o.cliente_email,
+      oggetto: `Pagamento ricevuto ${numero} – ${o.cliente_nome}`,
+      contenuto: {
+        anteprima: `${o.cliente_nome} ha pagato ${euro(o.importo_pagato)}.`,
+        titolo: 'Nuovo ordine pagato 💶',
+        intro: [`${o.cliente_nome} ha pagato. Il sito è entrato tra i progetti in lavorazione.`],
+        dettagli: [
+          ['Ordine', numero],
+          ['Cliente', o.cliente_nome],
+          ['Email', o.cliente_email],
+          ['Incassato', euro(o.importo_pagato)],
+          ['Prezzo totale', euro(o.prezzo)],
+        ],
+        pulsante: { testo: "Apri l'ordine", url: link },
+      },
+    })
   }
   if (inviata) await db.from('ordini_siti').update({ email_inviata: true }).eq('id', o.id)
 

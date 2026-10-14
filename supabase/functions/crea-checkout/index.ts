@@ -2,8 +2,10 @@
 // pagina di pagamento Stripe Checkout. Restituisce { url } a cui reindirizzare il cliente.
 //
 // Secret necessari (supabase secrets set ...): STRIPE_SECRET_KEY, SITE_URL
+// Facoltativi (email di avviso): RESEND_API_KEY, MAIL_FROM, ADMIN_EMAIL
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, json } from '../_shared/cors.ts'
+import { euro, inviaEmail, numeroOrdine, sito } from '../_shared/email.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -42,6 +44,41 @@ Deno.serve(async (req) => {
       .update({ firmatario: nome, accettato_il: new Date().toISOString(), accettato_ip: ip })
       .eq('id', o.id)
     if (errAcc) throw errAcc
+
+    // Avvisa l'agenzia: il cliente ha accettato il preventivo/contratto (una sola volta per ordine)
+    const admin = Deno.env.get('ADMIN_EMAIL')
+    if (admin) {
+      const { data: prenotato } = await db
+        .from('ordini_siti')
+        .update({ email_accettazione_inviata: true })
+        .eq('id', o.id)
+        .eq('email_accettazione_inviata', false)
+        .select('id')
+        .maybeSingle()
+      if (prenotato) {
+        const ok = await inviaEmail({
+          a: admin,
+          rispondiA: o.cliente_email,
+          oggetto: `Preventivo accettato ${numero} – ${o.cliente_nome}`,
+          contenuto: {
+            anteprima: `${nome} ha accettato il preventivo e sta passando al pagamento.`,
+            titolo: 'Preventivo accettato 🎉',
+            intro: [`${o.cliente_nome} ha letto e accettato il contratto e sta per pagare con carta. Appena il pagamento va a buon fine ricevi un’altra email.`],
+            dettagli: [
+              ['Ordine', numero],
+              ['Cliente', o.cliente_nome],
+              ['Email', o.cliente_email],
+              ['Firmato da', nome],
+              ['Prezzo totale', euro(o.prezzo)],
+              ['Da pagare ora', euro(o.acconto ?? o.prezzo)],
+              ['Consegna', o.consegna_giorni ? `${o.consegna_giorni} giorni` : '—'],
+            ],
+            pulsante: { testo: "Apri l'ordine", url: `${sito()}/ordine/${token}` },
+          },
+        })
+        if (!ok) await db.from('ordini_siti').update({ email_accettazione_inviata: false }).eq('id', o.id)
+      }
+    }
 
     const form = new URLSearchParams({
       mode: 'payment',

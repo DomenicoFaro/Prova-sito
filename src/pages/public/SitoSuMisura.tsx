@@ -233,6 +233,8 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
       })
       if (error) throw error
       const token = String(data)
+      // Avvisa l'agenzia via email: se fallisce non blocca il cliente
+      supabase.functions.invoke('notifica-richiesta', { body: { token } }).catch(() => {})
       salvaOrdine({ token, nome: b.nome_attivita.trim() || tipologia?.nome || 'Il mio sito', data: new Date().toISOString() })
       cancellaBozza(modo)
       navigate(`/ordine/${token}?nuovo=1`)
