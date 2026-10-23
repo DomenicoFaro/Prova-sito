@@ -12,7 +12,7 @@ import {
   Spinner,
   Vuoto,
 } from '../../../components/ui'
-import { CHIAVE_MIE, costruisciSezioni, filtraPerSezione } from '../../../lib/opportunita'
+import { CHIAVE_MIE, costruisciSezioni, filtraPerSezione, idRifiutate } from '../../../lib/opportunita'
 import { messaggioErrore, supabase } from '../../../lib/supabase'
 import type { EsitoOpportunita, EsitoOpportunitaRiga, Opportunita as OpportunitaRiga, OpportunitaPresa, Profilo } from '../../../lib/types'
 import { esegui, useQuery } from '../../../lib/useQuery'
@@ -74,14 +74,15 @@ export default function Opportunita() {
   /** Esito dei link caricati dai collaboratori del team (visibili al socio). */
   const esitiTeam = useMemo(() => new Map((dati?.esiti ?? []).map((e) => [`${e.opportunita_id}:${e.collaboratore_id}`, e.esito])), [dati])
 
+  const rifiutate = useMemo(() => idRifiutate(dati?.opportunita ?? [], dati?.esiti ?? [], profilo?.id ?? ''), [dati, profilo?.id])
   const sezioni = useMemo(
-    () => costruisciSezioni(dati?.opportunita ?? [], { meId: profilo?.id ?? '', mie: true, persone: isGestore ? (dati?.persone ?? null) : null }),
-    [dati, profilo?.id, isGestore],
+    () => costruisciSezioni(dati?.opportunita ?? [], { meId: profilo?.id ?? '', mie: true, persone: isGestore ? (dati?.persone ?? null) : null, rifiutate }),
+    [dati, profilo?.id, isGestore, rifiutate],
   )
   const sezioneCorrente = sezioni.find((x) => x.chiave === sezione) ?? null
   const visibili = useMemo(
-    () => (sezioneCorrente ? filtraPerSezione(dati?.opportunita ?? [], sezioneCorrente.chiave, profilo?.id ?? '') : []),
-    [dati, sezioneCorrente, profilo?.id],
+    () => (sezioneCorrente ? filtraPerSezione(dati?.opportunita ?? [], sezioneCorrente.chiave, profilo?.id ?? '', rifiutate) : []),
+    [dati, sezioneCorrente, profilo?.id, rifiutate],
   )
   const categorieNote = useMemo(
     () => Array.from(new Set((dati?.opportunita ?? []).map((o) => o.categoria.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'it')),

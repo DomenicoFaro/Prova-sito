@@ -13,7 +13,7 @@ import {
   Vuoto,
 } from '../../../components/ui'
 import { formatDataOra } from '../../../lib/format'
-import { costruisciSezioni, filtraPerSezione } from '../../../lib/opportunita'
+import { costruisciSezioni, filtraPerSezione, idRifiutate } from '../../../lib/opportunita'
 import { messaggioErrore, supabase } from '../../../lib/supabase'
 import type { EsitoOpportunitaRiga, Opportunita, OpportunitaPresa, Profilo } from '../../../lib/types'
 import { esegui, useQuery } from '../../../lib/useQuery'
@@ -73,14 +73,15 @@ export default function AdminOpportunita() {
     () => (dati?.opportunita ?? []).filter((o) => o.owner_id || teamFiltro === 'tutti' || (o.team_id ?? '') === teamFiltro),
     [dati, teamFiltro],
   )
+  const rifiutate = useMemo(() => idRifiutate(elenco, dati?.esiti ?? [], meId), [elenco, dati, meId])
   const sezioni = useMemo(
-    () => costruisciSezioni(elenco, { meId, mie: true, persone: mappe.profili }),
-    [elenco, meId, mappe.profili],
+    () => costruisciSezioni(elenco, { meId, mie: true, persone: mappe.profili, rifiutate }),
+    [elenco, meId, mappe.profili, rifiutate],
   )
   const sezioneCorrente = sezioni.find((x) => x.chiave === sezione) ?? null
   const visibili = useMemo(
-    () => (sezioneCorrente ? filtraPerSezione(elenco, sezioneCorrente.chiave, meId) : []),
-    [elenco, sezioneCorrente, meId],
+    () => (sezioneCorrente ? filtraPerSezione(elenco, sezioneCorrente.chiave, meId, rifiutate) : []),
+    [elenco, sezioneCorrente, meId, rifiutate],
   )
   const categorieNote = useMemo(
     () => Array.from(new Set((dati?.opportunita ?? []).map((o) => o.categoria.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'it')),

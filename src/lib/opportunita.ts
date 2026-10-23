@@ -1,5 +1,5 @@
 import type { NomeIcona } from '../components/Icon'
-import type { Opportunita, Profilo } from './types'
+import type { EsitoOpportunitaRiga, Opportunita, Profilo } from './types'
 
 /** Una "cartella" della pagina Opportunità: una categoria, "Le mie opportunità" o i link di una persona. */
 export interface Sezione {
@@ -11,6 +11,7 @@ export interface Sezione {
 }
 
 export const CHIAVE_MIE = 'mie'
+export const CHIAVE_RIFIUTATE = 'rifiutate'
 const SENZA_CATEGORIA = 'Senza categoria'
 
 const normalizza = (c: string) => c.trim().toLowerCase()
@@ -22,6 +23,15 @@ function maiuscola(t: string) {
 }
 
 /**
+ * Id delle opportunità rifiutate (esito "non interessato") visibili a `meId`:
+ * quelle su cui ho risposto io e i link privati di una persona su cui ha risposto lei.
+ */
+export function idRifiutate(lista: Opportunita[], esiti: EsitoOpportunitaRiga[], meId: string): Set<string> {
+  const rifiutati = new Set(esiti.filter((e) => e.esito === 'non_interessato').map((e) => `${e.opportunita_id}:${e.collaboratore_id}`))
+  return new Set(lista.filter((o) => rifiutati.has(`${o.id}:${o.owner_id ?? meId}`)).map((o) => o.id))
+}
+
+/**
  * Raggruppa le opportunità in sezioni:
  *  - una per categoria, con le opportunità condivise del team (create da admin o socio);
  *  - "Le mie opportunità": quelle caricate da me (se `mie`);
@@ -29,9 +39,12 @@ function maiuscola(t: string) {
  */
 export function costruisciSezioni(
   lista: Opportunita[],
-  opzioni: { meId: string; mie: boolean; persone: Map<string, Profilo> | null },
+  opzioni: { meId: string; mie: boolean; persone: Map<string, Profilo> | null; rifiutate?: Set<string> },
 ): Sezione[] {
   const sezioni: Sezione[] = []
+  const rifiutate = opzioni.rifiutate ?? new Set<string>()
+  const tutte = lista
+  lista = lista.filter((o) => !rifiutate.has(o.id))
 
   if (opzioni.mie) {
     sezioni.push({
@@ -74,10 +87,21 @@ export function costruisciSezioni(
       })
     }
   }
+  if (rifiutate.size > 0) {
+    sezioni.push({
+      chiave: CHIAVE_RIFIUTATE,
+      titolo: 'Rifiutate',
+      sottotitolo: 'Segnate come non interessato',
+      conteggio: tutte.filter((o) => rifiutate.has(o.id)).length,
+      icona: 'ban',
+    })
+  }
   return sezioni
 }
 
-export function filtraPerSezione(lista: Opportunita[], chiave: string, meId: string): Opportunita[] {
+export function filtraPerSezione(lista: Opportunita[], chiave: string, meId: string, rifiutate: Set<string> = new Set()): Opportunita[] {
+  if (chiave === CHIAVE_RIFIUTATE) return lista.filter((o) => rifiutate.has(o.id))
+  lista = lista.filter((o) => !rifiutate.has(o.id))
   if (chiave === CHIAVE_MIE) return lista.filter((o) => o.creato_da === meId)
   if (chiave.startsWith('p:')) return lista.filter((o) => o.owner_id === chiave.slice(2))
   if (chiave.startsWith('cat:')) {
