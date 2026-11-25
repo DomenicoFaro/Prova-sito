@@ -163,7 +163,7 @@ npm run dev           # http://localhost:5173
 Il modulo «Scrivici» in fondo alla home apre un **ticket**: non parte nessuna email. Serve lo stesso script dei clienti (`supabase/clienti_recensioni.sql`).
 - Chi scrive senza account riceve un **link privato** (`/assistenza/<codice>`) con la chat; il link resta salvato anche sul suo dispositivo.
 - I clienti con account aprono e seguono i ticket da *Area riservata → Assistenza*.
-- L'**admin** vede tutti i ticket; il **collaboratore** quelli dei siti che segue (si sceglie nel sito del cliente, oppure assegnando il ticket).
+- L'**admin** vede tutti i ticket; il **collaboratore** quelli dei siti che segue (si sceglie nel sito del cliente, oppure assegnando il ticket). Con [`supabase/ticket_tutti.sql`](supabase/ticket_tutti.sql) l'admin può spuntare **Vede tutti i ticket** in *Collaboratori → Modifica* (poi si ripubblica `notifica-ticket`).
 - **Notifiche**: numero nel menu e avviso in pagina. In più, le **notifiche push** anche a sito chiuso:
   1. SQL Editor → esegui [`supabase/notifiche_push.sql`](supabase/notifiche_push.sql);
   2. pubblica la funzione: `npx supabase functions deploy notifica-ticket --no-verify-jwt` (nessun secret);

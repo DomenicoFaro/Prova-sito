@@ -16,6 +16,8 @@ interface FormCollab {
   percentuale_default: string
   attivo: boolean
   password: string
+  /** undefined = lo script ticket_tutti.sql non è ancora stato eseguito */
+  vede_tutti_ticket?: boolean
 }
 
 const VUOTO: FormCollab = { nome: '', email: '', ruolo: 'collaboratore', percentuale_default: '0', attivo: true, password: '' }
@@ -59,7 +61,7 @@ export default function AdminCollaboratori() {
 
   function apriModifica(p: Profilo) {
     setErrore(null)
-    setForm({ nome: p.nome, email: p.email, ruolo: p.ruolo === 'admin' ? 'admin' : 'collaboratore', percentuale_default: String(p.percentuale_default), attivo: p.attivo, password: '' })
+    setForm({ nome: p.nome, email: p.email, ruolo: p.ruolo === 'admin' ? 'admin' : 'collaboratore', percentuale_default: String(p.percentuale_default), attivo: p.attivo, password: '', vede_tutti_ticket: p.vede_tutti_ticket })
     setModale(p)
   }
 
@@ -93,7 +95,13 @@ export default function AdminCollaboratori() {
         if (modale.id === io?.id && (form.ruolo !== io.ruolo || !form.attivo)) {
           throw new Error('Non puoi cambiare il tuo ruolo né disattivare il tuo account.')
         }
-        const modifiche = { nome: form.nome.trim(), ruolo: form.ruolo, percentuale_default: perc, attivo: form.attivo }
+        const modifiche = {
+          nome: form.nome.trim(),
+          ruolo: form.ruolo,
+          percentuale_default: perc,
+          attivo: form.attivo,
+          ...(form.vede_tutti_ticket === undefined ? {} : { vede_tutti_ticket: form.ruolo === 'collaboratore' && form.vede_tutti_ticket }),
+        }
         await esegui(supabase.from('profiles').update(modifiche).eq('id', modale.id))
         if (form.password) {
           await esegui(supabase.rpc('admin_imposta_password', { p_user_id: modale.id, p_password: form.password }))
@@ -157,6 +165,9 @@ export default function AdminCollaboratori() {
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${p.ruolo === 'admin' ? 'bg-slate-900 text-white' : 'bg-brand-50 text-brand-700'}`}>
                         {ETICHETTA_RUOLO[p.ruolo] ?? 'Collaboratore'}
                       </span>
+                      {p.ruolo === 'collaboratore' && p.vede_tutti_ticket && (
+                        <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-800">Tutti i ticket</span>
+                      )}
                       {!p.attivo && <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">Disattivato</span>}
                     </div>
                   </div>
@@ -241,6 +252,15 @@ export default function AdminCollaboratori() {
               <input id="cp" inputMode="decimal" className="input" value={form.percentuale_default} onChange={(e) => setForm((f) => ({ ...f, percentuale_default: e.target.value }))} />
             </div>
           </div>
+          {modale !== 'nuovo' && form.ruolo === 'collaboratore' && form.vede_tutti_ticket !== undefined && (
+            <label className="flex items-start gap-3">
+              <input type="checkbox" className="mt-0.5 h-4 w-4 accent-brand-600" checked={form.vede_tutti_ticket} onChange={(e) => setForm((f) => ({ ...f, vede_tutti_ticket: e.target.checked }))} />
+              <span className="text-sm text-slate-700">
+                <span className="font-medium">Vede tutti i ticket</span>
+                <span className="block text-xs text-slate-500">Legge, risponde e riceve le notifiche di ogni richiesta, senza vedere incassi o clienti.</span>
+              </span>
+            </label>
+          )}
           {modale !== 'nuovo' && (
             <label className="flex items-center gap-3">
               <input type="checkbox" className="h-4 w-4 accent-brand-600" checked={form.attivo} onChange={(e) => setForm((f) => ({ ...f, attivo: e.target.checked }))} />

@@ -13,6 +13,8 @@ export interface Profilo {
   ruolo: Ruolo
   percentuale_default: number
   attivo: boolean
+  /** Collaboratore che vede tutti i ticket (supabase/ticket_tutti.sql; assente finché non lo esegui) */
+  vede_tutti_ticket?: boolean
   created_at: string
 }
 

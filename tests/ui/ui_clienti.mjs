@@ -299,6 +299,26 @@ await prova('L’admin nasconde la recensione: sparisce dal sito', async () => {
   vero(!(await testo(visitatore)).includes('felicissima'), 'ancora visibile')
 })
 
+console.log('\nVede tutti i ticket')
+await prova('L’admin lo spunta e il collaboratore vede anche i ticket non suoi', async () => {
+  await admin.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await visitatore.goto(BASE, { waitUntil: 'networkidle0' })
+  await backend.db.query(`insert into public.tickets (nome, email, oggetto) values ('Terza Persona', 't@x.it', 'Richiesta senza collaboratore')`)
+  await collab.goto(`${BASE}/area/ticket`, { waitUntil: 'networkidle0' })
+  await attendi(500)
+  vero(!(await testo(collab)).includes('Richiesta senza collaboratore'), 'lo vede senza permesso')
+  await admin.goto(`${BASE}/area/admin/collaboratori`, { waitUntil: 'networkidle0' })
+  await clicca(admin, 'Modifica Marco Demo', 'main')
+  await admin.waitForSelector('[role=dialog] input[type=checkbox]')
+  await admin.evaluate(() => [...document.querySelectorAll('[role=dialog] label')].find((l) => l.innerText.includes('Vede tutti i ticket')).querySelector('input').click())
+  await clicca(admin, 'Salva', '[role=dialog]')
+  await vede(admin, 'Tutti i ticket')
+  await collab.goto(`${BASE}/area/ticket`, { waitUntil: 'networkidle0' })
+  await vede(collab, 'Richiesta senza collaboratore')
+  await vede(collab, 'Tutte le richieste arrivate dal sito')
+  await scatto(collab, 'collab-tutti')
+})
+
 console.log('\nNotifiche')
 await prova('Nella pagina Ticket c’è il pulsante per attivarle', async () => {
   await admin.goto(`${BASE}/area/ticket`, { waitUntil: 'networkidle0' })

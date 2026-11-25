@@ -28,6 +28,7 @@ export async function preparaDb() {
   await db.exec(sql('rimuovi_soci.sql'))
   await db.exec(sql('clienti_recensioni.sql'))
   await db.exec(sql('notifiche_push.sql'))
+  await db.exec(sql('ticket_tutti.sql'))
   return db
 }
 

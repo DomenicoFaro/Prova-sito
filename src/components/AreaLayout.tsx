@@ -49,7 +49,7 @@ export function AreaLayout() {
   useEffect(() => setAperto(false), [pathname])
 
   // Ticket con messaggi da leggere: numero nel menu, nel titolo della scheda e avviso in pagina
-  const ticket = useTicket(profilo?.id, profilo?.ruolo)
+  const ticket = useTicket(profilo)
   useEffect(() => {
     const titolo = document.title.replace(/^\(\d+\) /, '')
     document.title = ticket.nonLetti ? `(${ticket.nonLetti}) ${titolo}` : titolo
