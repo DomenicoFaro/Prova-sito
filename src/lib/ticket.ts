@@ -1,5 +1,6 @@
 // Ticket e chat (tabelle e funzioni in supabase/clienti_recensioni.sql).
 import { useEffect, useRef, useState } from 'react'
+import { pushAttivoQui } from './push'
 import { supabase } from './supabase'
 import type { Ruolo, Ticket } from './types'
 
@@ -32,10 +33,10 @@ export function daLeggere(t: Ticket, ruolo: Ruolo, utente: string) {
   return t.collaboratore_id === utente && dopo(t.letto_collaboratore_il)
 }
 
-/** Avviso di sistema (se l'utente lo ha permesso). Funziona finché l'area riservata è aperta. */
+/** Avviso di sistema mentre l'area è aperta, solo se non ci sono già le notifiche push. */
 export function avvisa(titolo: string, testo: string) {
   try {
-    if ('Notification' in window && Notification.permission === 'granted') {
+    if (!pushAttivoQui() && 'Notification' in window && Notification.permission === 'granted') {
       new Notification(titolo, { body: testo, icon: '/favicon-192.png', tag: 'ticket' })
     }
   } catch {

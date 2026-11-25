@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { CONTATTI } from '../config'
+import { notificaTicket } from '../lib/push'
 import { messaggioErrore, supabase } from '../lib/supabase'
 import { salvaTicket, ticketSalvati, type TicketSalvato } from '../lib/ticket'
 import { Icon } from './Icon'
@@ -40,6 +41,7 @@ export function ModuloContatto() {
     }
     const nuovo = { token: data.token as string, numero: data.numero as number }
     salvaTicket(nuovo)
+    notificaTicket()
     setAperto(nuovo)
     setDati(VUOTO)
   }

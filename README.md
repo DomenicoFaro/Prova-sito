@@ -164,7 +164,11 @@ Il modulo «Scrivici» in fondo alla home apre un **ticket**: non parte nessuna 
 - Chi scrive senza account riceve un **link privato** (`/assistenza/<codice>`) con la chat; il link resta salvato anche sul suo dispositivo.
 - I clienti con account aprono e seguono i ticket da *Area riservata → Assistenza*.
 - L'**admin** vede tutti i ticket; il **collaboratore** quelli dei siti che segue (si sceglie nel sito del cliente, oppure assegnando il ticket).
-- **Notifiche**: numero nel menu, avviso in pagina e, se si preme *Attiva le notifiche*, avviso del dispositivo. Arrivano mentre l'area riservata è aperta.
+- **Notifiche**: numero nel menu e avviso in pagina. In più, le **notifiche push** anche a sito chiuso:
+  1. SQL Editor → esegui [`supabase/notifiche_push.sql`](supabase/notifiche_push.sql);
+  2. pubblica la funzione: `npx supabase functions deploy notifica-ticket --no-verify-jwt` (nessun secret);
+  3. su ogni dispositivo: *Area riservata → Ticket → Attiva le notifiche*. Su **iPhone** (iOS 16.4 o successivo) prima si aggiunge il sito alla schermata Home da Safari e si apre dall'icona.
+  Avvisano l'admin per ogni messaggio ricevuto, il collaboratore per i suoi ticket e per le assegnazioni, il cliente con account quando riceve risposta.
 
 ## Personalizzazione
 - **Testi di home, servizi, domande e contatti**: `src/config.ts`. I contatti compaiono solo se compilati.

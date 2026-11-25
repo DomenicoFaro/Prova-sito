@@ -299,6 +299,45 @@ await prova('L’admin nasconde la recensione: sparisce dal sito', async () => {
   vero(!(await testo(visitatore)).includes('felicissima'), 'ancora visibile')
 })
 
+console.log('\nNotifiche')
+await prova('Nella pagina Ticket c’è il pulsante per attivarle', async () => {
+  await admin.goto(`${BASE}/area/ticket`, { waitUntil: 'networkidle0' })
+  await vede(admin, 'Notifiche sul dispositivo')
+  await vede(admin, 'Attiva le notifiche')
+  await scatto(admin, 'notifiche-computer')
+})
+await prova('Su iPhone dal browser spiega come aggiungere il sito alla schermata Home', async () => {
+  const p = await entra('collab@demo.it', PASSWORD_DEMO, 390)
+  await p.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1')
+  await p.goto(`${BASE}/area/ticket`, { waitUntil: 'networkidle0' })
+  await vede(p, 'Aggiungi alla schermata Home')
+  await nessunoSbordo(p, 'ticket su iPhone')
+  await scatto(p, 'notifiche-iphone')
+})
+await prova('Il sito si può installare: manifest e icone', async () => {
+  const m = await (await fetch(`${BASE}/manifest.webmanifest`)).json()
+  vero(m.display === 'standalone' && m.start_url === '/area', JSON.stringify(m))
+  for (const i of m.icons) vero((await fetch(BASE + i.src)).headers.get('content-type') === 'image/png', i.src)
+  vero(await admin.$('link[rel="manifest"]'), 'manca il collegamento al manifest')
+})
+await prova('Arrivando una notifica viene mostrata con il collegamento al ticket', async () => {
+  await admin.browserContext().overridePermissions(BASE, ['notifications'])
+  const cdp = await admin.createCDPSession()
+  let registrazione
+  cdp.on('ServiceWorker.workerRegistrationUpdated', (e) => (registrazione = e.registrations.find((r) => r.scopeURL.startsWith(BASE) && !r.isDeleted) ?? registrazione))
+  await cdp.send('ServiceWorker.enable')
+  await admin.evaluate(() => navigator.serviceWorker.ready.then(() => true))
+  await attendi(500)
+  vero(registrazione, 'servizio non registrato')
+  const invia = (dati) => cdp.send('ServiceWorker.deliverPushMessage', { origin: BASE, registrationId: registrazione.registrationId, data: JSON.stringify(dati) })
+  await invia({ titolo: 'Ticket n. 9 – Prova', testo: 'Messaggio di prova', url: '/area/ticket/abc', tag: 'abc' })
+  await invia({ titolo: 'Indirizzo esterno', testo: 'x', url: 'https://cattivo.example', tag: 'zzz' })
+  await attendi(800)
+  const n = await admin.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => [n.title, n.body, n.data.url]))
+  vero(n.some((x) => x[0] === 'Ticket n. 9 – Prova' && x[1] === 'Messaggio di prova' && x[2] === '/area/ticket/abc'), JSON.stringify(n))
+  vero(n.some((x) => x[0] === 'Indirizzo esterno' && x[2] === '/area/ticket'), 'un indirizzo esterno deve essere ignorato: ' + JSON.stringify(n))
+})
+
 console.log('\nTelefono')
 await prova('Nessuna pagina sborda a 390 px', async () => {
   for (const p of [visitatore, cliente, admin]) await p.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true })
