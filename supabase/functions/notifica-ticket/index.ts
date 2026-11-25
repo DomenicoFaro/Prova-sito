@@ -104,6 +104,9 @@ Deno.serve(async (req) => {
       const { data: tickets, error: errT } = await db.from('tickets').select('id, numero, nome, cliente_id, collaboratore_id').in('id', ids)
       if (errT) throw errT
       const { data: admin } = await db.from('profiles').select('id').eq('ruolo', 'admin').eq('attivo', true)
+      // Chi vede tutti i ticket (se ticket_tutti.sql non è stato eseguito, la richiesta non trova nulla)
+      const { data: tutti } = await db.from('profiles').select('id').eq('vede_tutti_ticket', true).eq('attivo', true)
+      const sempre = [...(admin ?? []), ...(tutti ?? [])].map((p: { id: string }) => p.id)
       const inOrdine = [...messaggi].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
       for (const t of tickets ?? []) {
         for (const autore of ['richiedente', 'staff']) {
@@ -113,7 +116,7 @@ Deno.serve(async (req) => {
           const daChiScrive = autore === 'richiedente'
           avvisi.push({
             per: daChiScrive
-              ? [...(admin ?? []).map((a: { id: string }) => a.id), ...(t.collaboratore_id ? [t.collaboratore_id] : [])]
+              ? [...sempre, ...(t.collaboratore_id ? [t.collaboratore_id] : [])]
               : t.cliente_id ? [t.cliente_id] : [],
             titolo: daChiScrive ? `Ticket n. ${t.numero} – ${t.nome}` : 'Forma Web ti ha risposto',
             testo: ultimo.testo.slice(0, 160),

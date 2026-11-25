@@ -197,6 +197,31 @@ await prova('La prova arriva solo a chi la chiede; senza accesso è rifiutata', 
   eq([r.stato, r.corpo.inviate, chi()], [200, 1, ['collab']])
   eq((await chiama('prova')).stato, 401)
 })
+await prova('«Vede tutti i ticket»: solo l’admin lo concede', async () => {
+  await vietato(collab, `update public.profiles set vede_tutti_ticket = true where id = $1`, [collab], 'Solo l')
+  // Il cliente non può modificare il profilo: la richiesta non cambia nessuna riga
+  await q(cliente, `update public.profiles set vede_tutti_ticket = true where id = $1`, [cliente])
+  eq((await db.query(`select count(*)::int as n from public.profiles where vede_tutti_ticket`)).rows[0].n, 0)
+})
+await prova('Chi vede tutti i ticket li legge, risponde e riceve gli avvisi anche se non assegnato', async () => {
+  const altro = (await q(null, `select public.apri_ticket($1::jsonb) as r`, [JSON.stringify({ nome: 'Bruno', email: 'b@x.it', messaggio: 'Informazioni sul vostro lavoro.' })]))[0].r
+  await chiama('invia')
+  eq(chi(), ['admin'])
+  eq((await q(collab, `select id from public.tickets where id = $1`, [altro.id])).length, 0)
+  await q(admin, `update public.profiles set vede_tutti_ticket = true where id = $1`, [collab])
+  const totale = (await db.query(`select count(*)::int as n from public.tickets`)).rows[0].n
+  eq((await q(collab, `select id from public.tickets`)).length, totale)
+  await q(null, `select public.scrivi_ticket($1, 'siete aperti?')`, [altro.token])
+  await chiama('invia')
+  eq(chi(), ['admin', 'collab'])
+  await q(collab, `select public.segna_letto_ticket($1)`, [altro.id])
+  eq((await q(collab, `select ticket_id from public.ticket_letture`)).map((l) => l.ticket_id), [altro.id])
+  eq((await q(admin, `select ticket_id from public.ticket_letture where ticket_id = $1`, [altro.id])).length, 0)
+  await q(collab, `select public.rispondi_ticket($1, 'Sì, siamo qui.')`, [altro.id])
+  await vietato(collab, `select public.assegna_ticket($1, $2)`, [altro.id, collab], 'Solo l')
+  await q(admin, `update public.profiles set vede_tutti_ticket = false where id = $1`, [collab])
+  eq((await q(collab, `select id from public.tickets where id = $1`, [altro.id])).length, 0)
+})
 await prova('Un dispositivo non più valido viene dimenticato', async () => {
   risposte.admin = 410
   await q(null, `select public.scrivi_ticket($1, 'ancora io')`, [pubblico.token])

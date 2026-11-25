@@ -8,7 +8,7 @@ import { Caricamento, IntestazionePagina, MessaggioErrore, Modale, Spinner, Vuot
 import { formatDataOra } from '../../lib/format'
 import { notificaTicket } from '../../lib/push'
 import { messaggioErrore, supabase } from '../../lib/supabase'
-import { ATTESA_CHAT, daLeggere, ticketCambiati, useAggiornamento, type useTicket } from '../../lib/ticket'
+import { ATTESA_CHAT, ticketCambiati, useAggiornamento, type useTicket } from '../../lib/ticket'
 import type { MessaggioTicket, Profilo, SitoCliente, Ticket as RigaTicket } from '../../lib/types'
 import { esegui, useQuery } from '../../lib/useQuery'
 
@@ -22,7 +22,7 @@ export default function Ticket() {
 
 function Elenco() {
   const { profilo, isAdmin, isCliente } = useAuth()
-  const { ticket, errore, ricarica } = useOutletContext<Contesto>()
+  const { ticket, errore, nuovo: daLeggere, ricarica } = useOutletContext<Contesto>()
   const [filtro, setFiltro] = useState<'aperto' | 'chiuso'>('aperto')
   const [nuovo, setNuovo] = useState(false)
 
@@ -33,7 +33,7 @@ function Elenco() {
       <IntestazionePagina
         titolo={isCliente ? 'Assistenza' : 'Ticket'}
         sottotitolo={
-          isCliente ? 'Scrivi a Forma Web: ti risponde qui in chat.' : isAdmin ? 'Tutte le richieste arrivate dal sito. Rispondi in chat.' : 'Le richieste dei siti che segui. Rispondi in chat.'
+          isCliente ? 'Scrivi a Forma Web: ti risponde qui in chat.' : isAdmin || profilo?.vede_tutti_ticket ? 'Tutte le richieste arrivate dal sito. Rispondi in chat.' : 'Le richieste dei siti che segui. Rispondi in chat.'
         }
         azioni={
           isCliente && (
@@ -70,7 +70,7 @@ function Elenco() {
       ) : (
         <ul className="card divide-y divide-slate-100 overflow-hidden">
           {visibili.map((t) => {
-            const nonLetto = !!profilo && daLeggere(t, profilo.ruolo, profilo.id)
+            const nonLetto = daLeggere(t)
             return (
               <li key={t.id}>
                 <Link to={`/area/ticket/${t.id}`} className={`flex items-center gap-3 px-4 py-4 hover:bg-slate-50 sm:px-6 ${nonLetto ? 'bg-brand-50' : ''}`}>
