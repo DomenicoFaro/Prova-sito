@@ -1,4 +1,4 @@
-import type { StatoPagamento, StatoProgetto, StatoRichiesta, StatoVendita } from './types'
+import type { EsitoOpportunita, StatoPagamento, StatoProgetto, StatoRichiesta, StatoVendita } from './types'
 
 const euro = new Intl.NumberFormat('it-IT', {
   style: 'currency',
@@ -69,6 +69,12 @@ export const ETICHETTE_STATO_VENDITA: Record<StatoVendita, string> = {
   rifiutata: 'Rifiutata',
 }
 
+export const ETICHETTE_ESITO_OPPORTUNITA: Record<EsitoOpportunita, string> = {
+  venduto: 'Venduto',
+  interessato: 'Interessato',
+  non_interessato: 'Non interessato',
+}
+
 export const TIPI_SITO = ['Sito vetrina', 'E-commerce', 'Web app', 'Prenotazioni online', 'Restyling', 'Altro'] as const
 
 /** Data ISO (YYYY-MM-DD) di oggi nel fuso locale. */
@@ -81,4 +87,17 @@ export function hostname(url: string | null | undefined): string {
   if (!url) return ''
   // Dal testo originale (non da new URL) per mostrare i domini con accenti leggibili, non in punycode
   return url.replace(/^[a-z]+:\/\//i, '').split(/[/?#]/)[0].replace(/^www\./, '')
+}
+
+/** Prezzo di listino in forma breve: "500–600 €", "da 800 €", "20 $ al mese". */
+export function formatPrezzoListino(p: {
+  prezzo: number | string
+  prezzo_max: number | string | null
+  valuta: string
+  a_partire_da: boolean
+  periodicita: string
+}): string {
+  const n = (v: number | string) => Number(v).toLocaleString('it-IT', { maximumFractionDigits: 2 })
+  const importo = p.prezzo_max != null && Number(p.prezzo_max) > Number(p.prezzo) ? `${n(p.prezzo)}–${n(p.prezzo_max)}` : n(p.prezzo)
+  return [p.a_partire_da ? 'da' : '', `${importo} ${p.valuta}`, p.periodicita].filter(Boolean).join(' ')
 }

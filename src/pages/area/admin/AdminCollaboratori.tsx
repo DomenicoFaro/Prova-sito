@@ -16,12 +16,16 @@ interface FormCollab {
   percentuale_default: string
   attivo: boolean
   password: string
+  /** Solo per l'admin: chi gestisce il collaboratore ('' = l'admin stesso) */
+  responsabile_id: string
 }
 
-const VUOTO: FormCollab = { nome: '', email: '', ruolo: 'collaboratore', percentuale_default: '0', attivo: true, password: '' }
+const VUOTO: FormCollab = { nome: '', email: '', ruolo: 'collaboratore', percentuale_default: '0', attivo: true, password: '', responsabile_id: '' }
+
+const ETICHETTA_RUOLO: Record<Ruolo, string> = { admin: 'Admin', socio: 'Socio', collaboratore: 'Collaboratore' }
 
 export default function AdminCollaboratori() {
-  const { profilo: io } = useAuth()
+  const { profilo: io, isAdmin, isSocio } = useAuth()
   const [modale, setModale] = useState<'nuovo' | Profilo | null>(null)
   const [form, setForm] = useState<FormCollab>(VUOTO)
   const [salvataggio, setSalvataggio] = useState(false)
@@ -57,7 +61,7 @@ export default function AdminCollaboratori() {
 
   function apriModifica(p: Profilo) {
     setErrore(null)
-    setForm({ nome: p.nome, email: p.email, ruolo: p.ruolo, percentuale_default: String(p.percentuale_default), attivo: p.attivo, password: '' })
+    setForm({ nome: p.nome, email: p.email, ruolo: p.ruolo, percentuale_default: String(p.percentuale_default), attivo: p.attivo, password: '', responsabile_id: p.responsabile_id ?? '' })
     setModale(p)
   }
 
@@ -84,19 +88,26 @@ export default function AdminCollaboratori() {
             p_password: form.password,
             p_ruolo: form.ruolo,
             p_percentuale: perc,
+            // Il socio crea sempre sotto di sé (lo impone il database); l'admin sceglie
+            p_responsabile: isAdmin && form.ruolo === 'collaboratore' && form.responsabile_id ? form.responsabile_id : null,
           }),
         )
         setSuccesso(`Account creato: ${form.email.trim()} può già accedere con la password che hai scelto.`)
       } else if (modale) {
-        if (modale.id === io?.id && (form.ruolo !== 'admin' || !form.attivo)) {
-          throw new Error('Non puoi togliere a te stesso il ruolo di admin o disattivare il tuo account.')
+        if (modale.id === io?.id && (form.ruolo !== io.ruolo || !form.attivo)) {
+          throw new Error('Non puoi cambiare il tuo ruolo né disattivare il tuo account.')
         }
-        await esegui(
-          supabase
-            .from('profiles')
-            .update({ nome: form.nome.trim(), ruolo: form.ruolo, percentuale_default: perc, attivo: form.attivo })
-            .eq('id', modale.id),
-        )
+        // Il socio può cambiare solo nome, % e stato dei suoi collaboratori; il database lo impone comunque
+        const modifiche = isAdmin
+          ? {
+              nome: form.nome.trim(),
+              ruolo: form.ruolo,
+              percentuale_default: perc,
+              attivo: form.attivo,
+              responsabile_id: form.ruolo === 'collaboratore' && form.responsabile_id ? form.responsabile_id : null,
+            }
+          : { nome: form.nome.trim(), percentuale_default: perc, attivo: form.attivo }
+        await esegui(supabase.from('profiles').update(modifiche).eq('id', modale.id))
         if (form.password) {
           await esegui(supabase.rpc('admin_imposta_password', { p_user_id: modale.id, p_password: form.password }))
         }
@@ -125,7 +136,11 @@ export default function AdminCollaboratori() {
     <>
       <IntestazionePagina
         titolo="Collaboratori"
-        sottotitolo="Crea account, imposta le percentuali e guarda cosa vede ogni collaboratore."
+        sottotitolo={
+          isSocio
+            ? 'Aggiungi collaboratori al tuo team, imposta le percentuali e guarda cosa vede ciascuno.'
+            : 'Crea account, imposta le percentuali e guarda cosa vede ogni collaboratore. I soci hanno un team separato.'
+        }
         azioni={
           <button className="btn-primary" onClick={apriNuovo}>
             <Icon name="plus" className="h-4 w-4" /> Nuovo account
@@ -156,15 +171,22 @@ export default function AdminCollaboratori() {
                     <p className="truncate font-semibold text-slate-900">{p.nome}</p>
                     <p className="truncate text-sm text-slate-500">{p.email}</p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${p.ruolo === 'admin' ? 'bg-slate-900 text-white' : 'bg-brand-50 text-brand-700'}`}>
-                        {p.ruolo === 'admin' ? 'Admin' : 'Collaboratore'}
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${p.ruolo === 'admin' ? 'bg-slate-900 text-white' : p.ruolo === 'socio' ? 'bg-amber-100 text-amber-800' : 'bg-brand-50 text-brand-700'}`}>
+                        {ETICHETTA_RUOLO[p.ruolo]}
                       </span>
+                      {isAdmin && p.ruolo === 'collaboratore' && p.responsabile_id && (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
+                          Team di {dati.profili.find((r) => r.id === p.responsabile_id)?.nome ?? '—'}
+                        </span>
+                      )}
                       {!p.attivo && <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">Disattivato</span>}
                     </div>
                   </div>
-                  <button className="btn-ghost -mt-1 -mr-2 p-2" onClick={() => apriModifica(p)} aria-label={`Modifica ${p.nome}`}>
-                    <Icon name="edit" className="h-4 w-4" />
-                  </button>
+                  {(isAdmin || p.id !== io?.id) && (
+                    <button className="btn-ghost -mt-1 -mr-2 p-2" onClick={() => apriModifica(p)} aria-label={`Modifica ${p.nome}`}>
+                      <Icon name="edit" className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
 
                 <dl className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3 text-sm">
@@ -187,9 +209,11 @@ export default function AdminCollaboratori() {
                 </dl>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Link to={`/area/admin/collaboratori/${p.id}`} className="btn-secondary flex-1 py-2">
-                    <Icon name="eye" className="h-4 w-4" /> Vista come {p.nome.split(' ')[0]}
-                  </Link>
+                  {p.id !== io?.id && (
+                    <Link to={`/area/admin/collaboratori/${p.id}`} className="btn-secondary flex-1 py-2">
+                      <Icon name="eye" className="h-4 w-4" /> Vista come {p.nome.split(' ')[0]}
+                    </Link>
+                  )}
                   {p.id !== io?.id && (
                     <button className="btn-ghost py-2" onClick={() => toggleAttivo(p)}>
                       <Icon name={p.attivo ? 'ban' : 'check'} className="h-4 w-4" /> {p.attivo ? 'Disattiva' : 'Riattiva'}
@@ -229,18 +253,33 @@ export default function AdminCollaboratori() {
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label" htmlFor="cr">Ruolo</label>
-              <select id="cr" className="input" value={form.ruolo} onChange={(e) => setForm((f) => ({ ...f, ruolo: e.target.value as Ruolo }))}>
-                <option value="collaboratore">Collaboratore</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
+            {isAdmin && (
+              <div>
+                <label className="label" htmlFor="cr">Ruolo</label>
+                <select id="cr" className="input" value={form.ruolo} onChange={(e) => setForm((f) => ({ ...f, ruolo: e.target.value as Ruolo }))}>
+                  <option value="collaboratore">Collaboratore</option>
+                  <option value="socio">Socio</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            )}
             <div>
               <label className="label" htmlFor="cp">% predefinita</label>
               <input id="cp" inputMode="decimal" className="input" value={form.percentuale_default} onChange={(e) => setForm((f) => ({ ...f, percentuale_default: e.target.value }))} />
             </div>
           </div>
+          {isAdmin && form.ruolo === 'collaboratore' && (
+            <div>
+              <label className="label" htmlFor="cresp">Team</label>
+              <select id="cresp" className="input" value={form.responsabile_id} onChange={(e) => setForm((f) => ({ ...f, responsabile_id: e.target.value }))}>
+                <option value="">Il mio team</option>
+                {(dati?.profili ?? []).filter((x) => x.ruolo === 'socio' && x.attivo).map((x) => (
+                  <option key={x.id} value={x.id}>Team di {x.nome}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">Decide chi lo gestisce: i soci vedono solo i collaboratori del proprio team.</p>
+            </div>
+          )}
           {modale !== 'nuovo' && (
             <label className="flex items-center gap-3">
               <input type="checkbox" className="h-4 w-4 accent-brand-600" checked={form.attivo} onChange={(e) => setForm((f) => ({ ...f, attivo: e.target.checked }))} />
@@ -249,7 +288,12 @@ export default function AdminCollaboratori() {
           )}
           {modale === 'nuovo' && (
             <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
-              <strong>Admin</strong> vede e gestisce tutto. <strong>Collaboratore</strong> vede solo i progetti a cui lo assegni, i suoi guadagni e i pagamenti ricevuti.
+              {isAdmin ? (
+                <>
+                  <strong>Admin</strong> vede e gestisce tutto. <strong>Socio</strong> ha la stessa area ma vede solo il proprio team e i totali dell'azienda.{' '}
+                </>
+              ) : null}
+              <strong>Collaboratore</strong> vede solo i progetti a cui lo assegni, i suoi guadagni e i pagamenti ricevuti.
             </p>
           )}
           <div className="flex justify-end gap-2 pt-2">

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../../../auth/AuthProvider'
 import { Icon } from '../../../components/Icon'
 import { Screenshot } from '../../../components/Screenshot'
 import { Caricamento, IntestazionePagina, MessaggioErrore, MessaggioSuccesso, Modale, Spinner } from '../../../components/ui'
@@ -19,9 +20,13 @@ interface FormProgetto {
   screenshot_url: string | null
   galleria: string[]
   prezzo_totale: string
+  incassato: string
+  prova_fino_al: string
   data_consegna: string
   stato: StatoProgetto
   pubblico: boolean
+  /** Chi gestisce il progetto ('' = l'admin). Il socio crea sempre per sé. */
+  gestore_id: string
 }
 
 interface RigaAssegnazione {
@@ -42,9 +47,12 @@ const VUOTO: FormProgetto = {
   screenshot_url: null,
   galleria: [],
   prezzo_totale: '',
+  incassato: '',
+  prova_fino_al: '',
   data_consegna: '',
   stato: 'in_lavorazione',
   pubblico: false,
+  gestore_id: '',
 }
 
 const righe = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean)
@@ -52,6 +60,7 @@ const numero = parseNumero
 
 export default function AdminProgettoForm() {
   const { id } = useParams()
+  const { profilo: io, isAdmin } = useAuth()
   const nuovo = !id
   const navigate = useNavigate()
 
@@ -63,6 +72,8 @@ export default function AdminProgettoForm() {
   const [errore, setErrore] = useState<string | null>(null)
   const [successo, setSuccesso] = useState<string | null>(null)
   const [confermaElimina, setConfermaElimina] = useState(false)
+  const [incassoContanti, setIncassoContanti] = useState('')
+  const [registrazione, setRegistrazione] = useState(false)
 
   const { dati, caricamento, errore: erroreCaricamento, ricarica } = useQuery(async () => {
     const collaboratori = await esegui<Profilo[]>(supabase.from('profiles').select('*').order('nome'))
@@ -90,9 +101,12 @@ export default function AdminProgettoForm() {
             screenshot_url: p.screenshot_url,
             galleria: p.galleria ?? [],
             prezzo_totale: String(p.prezzo_totale ?? ''),
+            incassato: String(p.incassato ?? ''),
+            prova_fino_al: p.prova_fino_al ?? '',
             data_consegna: p.data_consegna ?? '',
             stato: p.stato,
             pubblico: p.pubblico,
+            gestore_id: p.gestore_id ?? '',
           }
         : VUOTO,
     )
@@ -115,6 +129,8 @@ export default function AdminProgettoForm() {
   const collaboratori = dati?.collaboratori ?? []
   const prezzoInserito = form.prezzo_totale.trim() ? numero(form.prezzo_totale) : 0
   const prezzo = Number.isFinite(prezzoInserito) ? prezzoInserito : 0
+  const incassatoInserito = form.incassato.trim() ? numero(form.incassato) : 0
+  const incassato = Number.isFinite(incassatoInserito) ? incassatoInserito : 0
   const sommaPerc = assegnazioni.reduce((s, a) => s + (numero(a.percentuale) || 0), 0)
   const oltre100 = sommaPerc > 100
   const margine = prezzo * (1 - Math.min(sommaPerc, 100) / 100)
@@ -161,6 +177,8 @@ export default function AdminProgettoForm() {
 
     if (!form.nome.trim()) return setErrore('Il nome del progetto è obbligatorio.')
     if (!Number.isFinite(prezzoInserito) || prezzoInserito < 0) return setErrore('Prezzo non valido.')
+    if (isAdmin && (!Number.isFinite(incassatoInserito) || incassatoInserito < 0)) return setErrore('Importo incassato non valido.')
+    if (isAdmin && incassatoInserito > prezzoInserito) return setErrore("L'importo incassato non può superare il prezzo totale.")
     let url = form.url.trim()
     if (url && !/^[a-z][a-z0-9+.-]*:/i.test(url)) url = `https://${url}`
     if (url && !/^https?:\/\/[^\s/]+\.[^\s]+$/i.test(url)) return setErrore('URL del sito non valido (es. https://www.esempio.it).')
@@ -185,9 +203,13 @@ export default function AdminProgettoForm() {
         screenshot_url: form.screenshot_url,
         galleria: form.galleria,
         prezzo_totale: prezzo,
+        // I soldi incassati li gestisce solo l'admin
+        ...(isAdmin ? { incassato, prova_fino_al: form.prova_fino_al || null } : {}),
         data_consegna: form.data_consegna || null,
         stato: form.stato,
         pubblico: form.pubblico,
+        // Il socio crea per sé; l'admin sceglie (nel DB, null = admin)
+        ...(isAdmin ? { gestore_id: form.gestore_id || null } : nuovo ? { gestore_id: io?.id ?? null } : {}),
       }
 
       let progettoId = id
@@ -240,6 +262,29 @@ export default function AdminProgettoForm() {
       setErrore(messaggioErrore(err))
     } finally {
       setSalvataggio(false)
+    }
+  }
+
+  /** Registra un incasso (es. il resto dopo la prova pagato in contanti): somma l'importo a «Già incassato». */
+  async function registraIncasso() {
+    setErrore(null)
+    setSuccesso(null)
+    const imp = numero(incassoContanti)
+    const resto = Math.max(0, prezzo - incassato)
+    if (!Number.isFinite(imp) || imp <= 0) return setErrore('Inserisci un importo maggiore di 0.')
+    if (imp > resto + 0.001) return setErrore(`Al cliente restano da pagare solo ${formatEuro(resto)}.`)
+    setRegistrazione(true)
+    try {
+      const nuovo = Math.round((incassato + imp) * 100) / 100
+      const completo = nuovo >= prezzo - 0.001
+      await esegui(supabase.from('progetti').update({ incassato: nuovo, ...(completo ? { prova_fino_al: null } : {}) }).eq('id', id!))
+      setForm((f) => ({ ...f, incassato: String(nuovo), ...(completo ? { prova_fino_al: '' } : {}) }))
+      setIncassoContanti('')
+      setSuccesso(completo ? 'Incasso registrato: il progetto è interamente pagato.' : `Incasso registrato. Restano da incassare ${formatEuro(prezzo - nuovo)}.`)
+    } catch (err) {
+      setErrore(messaggioErrore(err))
+    } finally {
+      setRegistrazione(false)
     }
   }
 
@@ -300,6 +345,43 @@ export default function AdminProgettoForm() {
                 <label className="label" htmlFor="prezzo">Prezzo totale (€)</label>
                 <input id="prezzo" inputMode="decimal" className="input" placeholder="0,00" value={form.prezzo_totale} onChange={(e) => set('prezzo_totale', e.target.value)} />
               </div>
+              {isAdmin && (
+                <div>
+                  <label className="label" htmlFor="incassato">Già incassato (€)</label>
+                  <input id="incassato" inputMode="decimal" className="input" placeholder="0,00" value={form.incassato} onChange={(e) => set('incassato', e.target.value)} />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Soldi già ricevuti dal cliente. Ancora da incassare: <strong className="tabular-nums">{formatEuro(Math.max(0, prezzo - incassato))}</strong>
+                  </p>
+                </div>
+              )}
+              {isAdmin && !nuovo && (
+                <div className="rounded-xl border border-slate-200 p-3 sm:col-span-2">
+                  <p className="text-sm font-semibold text-slate-800">Registra incasso</p>
+                  <p className="mb-2 text-xs text-slate-500">
+                    Quando il cliente ti paga (anche in contanti, ad esempio il resto dopo la prova), scrivi l&apos;importo ricevuto: viene sommato a «Già incassato».
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      aria-label="Importo incassato in contanti"
+                      inputMode="decimal"
+                      className="input max-w-40"
+                      placeholder="0,00"
+                      value={incassoContanti}
+                      onChange={(e) => setIncassoContanti(e.target.value)}
+                    />
+                    <button type="button" className="btn-secondary" disabled={registrazione || !incassoContanti.trim()} onClick={registraIncasso}>
+                      {registrazione ? <Spinner className="h-4 w-4" /> : <Icon name="wallet" className="h-4 w-4" />} Registra incasso
+                    </button>
+                  </div>
+                </div>
+              )}
+              {isAdmin && (
+                <div>
+                  <label className="label" htmlFor="prova">In prova fino al</label>
+                  <input id="prova" type="date" className="input" value={form.prova_fino_al} onChange={(e) => set('prova_fino_al', e.target.value)} />
+                  <p className="mt-1 text-xs text-slate-500">Per i siti in «Prova un mese»: si svuota da solo quando il cliente ha pagato tutto.</p>
+                </div>
+              )}
               <div>
                 <label className="label" htmlFor="data">Data consegna</label>
                 <input id="data" type="date" className="input" value={form.data_consegna} onChange={(e) => set('data_consegna', e.target.value)} />
@@ -314,6 +396,17 @@ export default function AdminProgettoForm() {
                 <input type="checkbox" className="h-4 w-4 accent-brand-600" checked={form.pubblico} onChange={(e) => set('pubblico', e.target.checked)} />
                 <span className="text-sm font-medium text-slate-700">Mostra nel portfolio pubblico</span>
               </label>
+              {isAdmin && (
+                <div>
+                  <label className="label" htmlFor="gestore">Team</label>
+                  <select id="gestore" className="input" value={form.gestore_id} onChange={(e) => set('gestore_id', e.target.value)}>
+                    <option value="">Il mio team</option>
+                    {collaboratori.filter((c) => c.ruolo === 'socio' && c.attivo).map((c) => (
+                      <option key={c.id} value={c.id}>Team di {c.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div>
               <label className="label" htmlFor="descrizione">Descrizione</label>

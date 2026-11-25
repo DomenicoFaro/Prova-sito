@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "test:db": "node tests/db/test.mjs && node tests/db/parita.mjs",
+    "test:ui": "node tests/ui/esegui.mjs",
+    "test": "npm run test:db && npm run test:ui"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",
@@ -16,10 +19,12 @@
     "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "puppeteer-core": "^25.13.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vite": "^8.3.1"

@@ -33,7 +33,7 @@ export default function Login() {
 
   return (
     <AuthCard titolo="Area riservata" sottotitolo="Accedi con le tue credenziali.">
-      <Seo titolo="Accedi" />
+      <Seo titolo="Accedi" noindex />
       {!supabaseConfigurato && (
         <div className="mb-4">
           <MessaggioErrore>Supabase non è configurato: imposta le variabili VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.</MessaggioErrore>

@@ -25,6 +25,8 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    /* Spazio per la barra del totale fissa in basso (modulo d'acquisto): niente resta nascosto sotto */
+    scroll-padding-bottom: 6rem;
     -webkit-tap-highlight-color: transparent;
   }
   body {
@@ -118,6 +120,11 @@
   animation: sali 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Cambio di passaggio nel modulo d'acquisto */
+.passo-entra {
+  animation: sali 0.35s ease-out both;
+}
+
 /* Telefoni che oscillano piano */
 @keyframes galleggia {
   0%,
@@ -144,6 +151,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .sali,
+  .passo-entra,
   .galleggia {
     animation: none;
   }

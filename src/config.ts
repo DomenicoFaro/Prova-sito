@@ -1,9 +1,12 @@
 import type { NomeIcona } from './components/Icon'
 
-// Testi della parte pubblica. I colori sono in src/index.css.
+// Dati del sito e testi della parte pubblica. Il dominio ufficiale è formaweb.shop. I colori sono in src/index.css.
 export const SITO = {
   titolo: 'Forma Web',
-  descrizione: 'Siti vetrina, e-commerce, prenotazioni online e gestionali su misura.',
+  dominio: 'formaweb.shop',
+  url: 'https://formaweb.shop',
+  descrizione:
+    'Forma Web realizza siti web su misura per attività e professionisti. Prova il tuo sito e acquistalo online: preventivo, contratto e pagamento in pochi minuti.',
 }
 
 /**
@@ -63,15 +66,15 @@ export const FUNZIONI: { icona: NomeIcona; titolo: string; testo: string }[] = [
   { icona: 'calendar', titolo: 'Agenda sempre aggiornata', testo: 'Gli orari liberi si vedono in tempo reale, senza telefonate.' },
   { icona: 'mail', titolo: 'Promemoria automatici', testo: 'Un’email il giorno prima ricorda l’appuntamento al cliente.' },
   { icona: 'chat', titolo: 'WhatsApp a un tocco', testo: 'Chi ha un dubbio ti scrive direttamente dal sito.' },
-  { icona: 'edit', titolo: 'Aggiorni tutto da solo', testo: 'Prezzi, foto, promozioni e chiusure dal tuo pannello.' },
+  { icona: 'edit', titolo: 'Aggiorni tutto da solo', testo: 'Listino, foto, promozioni e chiusure dal tuo pannello.' },
   { icona: 'cart', titolo: 'Ordini online', testo: 'Menù, carrello, asporto e consegna in un unico posto.' },
   { icona: 'phone', titolo: 'Come un’app', testo: 'Il sito si può aggiungere alla schermata del telefono.' },
 ]
 
 export const PASSI = [
-  { titolo: 'Ci conosciamo', testo: 'Ci racconti la tua attività, i tuoi clienti e cosa vuoi ottenere.' },
-  { titolo: 'Prima bozza', testo: 'Prepariamo una prova navigabile: la guardi dal telefono e ci dici cosa cambiare.' },
-  { titolo: 'Realizzazione', testo: 'Costruiamo il sito completo, con le funzioni che ti servono davvero.' },
+  { titolo: 'Scegli', testo: 'Componi il tuo sito online e vedi subito un preventivo indicativo.' },
+  { titolo: 'Conferma', testo: 'Confermiamo il preventivo, poi leggi il contratto, accetti e paghi online.' },
+  { titolo: 'Realizzazione', testo: 'Costruiamo il sito con le funzioni che ti servono davvero.' },
   { titolo: 'Online', testo: 'Pubblichiamo e restiamo disponibili per modifiche e manutenzione.' },
 ]
 
@@ -94,6 +97,10 @@ export const DOMANDE = [
   },
   {
     domanda: 'Quanto costa?',
-    risposta: 'Dipende da pagine e funzioni. Il prezzo si concorda prima di iniziare e si mette per iscritto.',
+    risposta: 'Dipende da pagine e funzioni. Con «Acquista il tuo sito» scegli quello che ti serve e vedi subito un preventivo indicativo.',
+  },
+  {
+    domanda: 'Posso provarlo prima?',
+    risposta: 'Sì, con «Prova il tuo sito» parti con un mese a prezzo ridotto: se alla fine ti piace paghi il resto, altrimenti non devi altro.',
   },
 ]

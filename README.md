@@ -2,7 +2,7 @@
 
 Il sito ha due parti:
 
-- **Parte pubblica** (sito privato, non indicizzato): home, portfolio con filtri per categoria e pagina di dettaglio di ogni progetto.
+- **Parte pubblica** (indicizzata da Google, dominio ufficiale **formaweb.shop**): home, portfolio con filtri per categoria e pagina di dettaglio di ogni progetto.
 - **Area riservata**:
   - **Admin**: gestisce progetti, assegnazioni con le percentuali, pagamenti e collaboratori, e può aprire la "vista come" di un collaboratore.
   - **Collaboratore**: vede, in sola lettura, solo i propri siti, i propri guadagni e i pagamenti ricevuti.
@@ -36,14 +36,72 @@ src/
    Lo script crea tabelle, view, trigger, la funzione `is_admin()`, tutte le policy RLS e i bucket Storage `screenshots` e `avatars`. Si può rieseguire senza problemi.
 3. Apri una nuova query, incolla [`supabase/seed.sql`](supabase/seed.sql) e premi **Run**. Inserisce i due progetti del portfolio: Café Sauvage e Barbiere (demo).
 
+### 2b. Opportunità (attività con alta vendibilità)
+Apri una nuova query, incolla [`supabase/opportunita.sql`](supabase/opportunita.sql) e premi **Run**.
+L'admin gestisce le attività da **Area riservata → Opportunità** (link Google Maps + dettagli, modifica, nascondi, elimina) e vede l'esito di ogni collaboratore. I collaboratori le vedono in sola lettura e premono **Fatto** o **Non accettato** (premendo di nuovo lo stesso tasto l'esito si annulla).
+
+### 2c. Soci e listino prezzi
+Apri una nuova query, incolla [`supabase/soci.sql`](supabase/soci.sql) e premi **Run** (dopo `account.sql`, `vendite.sql` e `opportunita.sql`).
+- **Admin** (tu): vede e gestisce tutto. **Socio** (es. Diego): stessa area, ma vede e gestisce solo il proprio team (collaboratori, progetti, vendite, pagamenti) e, dell'azienda, solo il fatturato totale. Non vede i tuoi guadagni né i tuoi collaboratori.
+- Crea il socio da **Collaboratori → Nuovo account → Ruolo: Socio**. Un socio può aggiungere collaboratori solo sotto di sé; tu puoi sceglierne il team (il tuo o quello di un socio).
+- **Prezzi**: listino interno (non pubblico), visibile a tutti quelli che hanno un account su **Area riservata → Prezzi**. Admin e soci lo modificano; i prezzi possono essere intervalli (500–600) in € o $.
+- **Opportunità**: organizzate per categorie. Ogni collaboratore ha anche «Le mie opportunità»; l'admin vede le cartelle di tutti i collaboratori, il socio solo quelle del suo team.
+
+### 2d. Acquisto siti dai clienti (preventivo → contratto → pagamento)
+Pagina pubblica **Acquista il tuo sito** (`/sito-su-misura`): il cliente descrive il sito, ricevi la richiesta in **Area riservata → Preventivi**, rispondi con prezzo/acconto/giorni di consegna e il cliente, dal suo link privato (`/ordine/<codice>`), legge il contratto, firma con nome e cognome, paga con **Stripe** e riceve il contratto compilato (sulla pagina e via email).
+
+Il pagamento usa **Stripe**: nessun canone mensile, solo commissione sulle vendite (circa 1,5% + 0,25 € per carte europee: verifica i prezzi aggiornati su stripe.com/it/pricing).
+
+1. **Database**: SQL Editor → incolla ed esegui [`supabase/ordini.sql`](supabase/ordini.sql).
+2. **Contratto**: Area riservata → Preventivi → *Modello contratto*. C'è un testo di partenza: sostituiscilo con il tuo (i segnaposto `{{cliente_nome}}`, `{{prezzo}}`… vengono riempiti da soli).
+3. **Stripe**: crea l'account su <https://stripe.com>, prendi la *Secret key* (Developers → API keys; usa `sk_test_…` per provare).
+4. **Edge Functions** (Supabase CLI):
+   ```bash
+   npx supabase secrets set STRIPE_SECRET_KEY=sk_live_... SITE_URL=https://formaweb.shop
+   npx supabase functions deploy crea-checkout
+   npx supabase functions deploy stripe-webhook --no-verify-jwt
+   ```
+5. **Webhook Stripe**: Developers → Webhooks → *Add endpoint* con URL `https://<ID>.supabase.co/functions/v1/stripe-webhook` ed eventi `checkout.session.completed` e `checkout.session.async_payment_succeeded`. Copia il *Signing secret* (`whsec_…`) e: `npx supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...`
+6. **Email col contratto** (facoltativo ma consigliato): account su <https://resend.com> (gratis fino a 3.000 email/mese), dominio verificato, poi  
+   `npx supabase secrets set RESEND_API_KEY=re_... MAIL_FROM="Forma Web <ordini@formaweb.shop>" ADMIN_EMAIL=tua@email.it`.  
+   Senza Resend il cliente vede e scarica comunque il contratto dalla sua pagina.
+   **Notifiche a te** (richiesta ricevuta + preventivo accettato + pagamento ricevuto): esegui [`supabase/notifiche_email.sql`](supabase/notifiche_email.sql), poi  
+   `npx supabase functions deploy notifica-richiesta --no-verify-jwt` e ripubblica `crea-checkout` e `stripe-webhook`. Le email usano il modello grafico di `supabase/functions/_shared/email.ts` (logo `public/logo-compatto.jpg`, servito da `SITE_URL`). `MAIL_REPLY_TO` è facoltativo (di default le risposte vanno ad `ADMIN_EMAIL`; nelle notifiche a te, rispondere scrive al cliente).
+   **Incassi e progetto automatico**: esegui anche [`supabase/incassi.sql`](supabase/incassi.sql) (dopo `ordini.sql`). Quando un cliente paga, il sito entra da solo tra i **Progetti** «in lavorazione» con il prezzo pieno e, come *incassato*, solo l'acconto realmente pagato. Il Riepilogo (solo admin) separa **guadagni già fatti** (siti consegnati), **in preparazione** (siti da fare), **già incassato** e **ancora da incassare**; il campo «Già incassato» si aggiorna dal form del progetto.
+   **Listino prezzi (solo area riservata)**: esegui [`supabase/prezzi_abbonamenti.sql`](supabase/prezzi_abbonamenti.sql) (dopo `soci.sql`). Il listino Siti web / Servizi / Abbonamenti lo vedono **solo** collaboratori, soci e admin, da *Area riservata → Prezzi*: non c'è nessuna pagina pubblica né pulsante nella home (`/prezzi` porta al login). Se avevi eseguito la vecchia versione «pubblica», questo script toglie l'accesso ai visitatori.
+   **Configuratore «Acquista il tuo sito»** (`/sito-su-misura`, anche `/acquista-sito-su-misura`): modulo a 5 passaggi (dati → sito → personalizzazione → preventivo → conferma) con preventivo indicativo in tempo reale.
+   - Esegui [`supabase/configuratore.sql`](supabase/configuratore.sql) **prima** di pubblicare il nuovo sito, **dopo** `ordini.sql`, `incassi.sql` e `prezzi_abbonamenti.sql`, e **non rieseguire `ordini.sql` / `incassi.sql` dopo** (ripristinerebbero le vecchie funzioni). Lo script si può rieseguire (anche se l'avevi già eseguito prima della «Prova un mese»): i prezzi che hai già modificato non vengono toccati.
+   - Ripubblica la funzione di pagamento: `npx supabase functions deploy crea-checkout`.
+   - Il prezzo indicativo viene **ricalcolato dal server** con il listino; i numeri che arrivano dal browser sono ignorati. Il **pagamento resta bloccato** finché non confermi l'importo da *Area riservata → Preventivi → Apri → Invia preventivo*; le richieste con voci «da» o «su preventivo» sono segnate **«Richiede approvazione manuale»**.
+   - **Modifichi tu prezzi, descrizioni, supplementi, servizi esterni, % di urgenza e avvisi** da *Area riservata → Preventivi → Listino prezzi e servizi* (solo admin). Le pagine incluse in ogni tipologia e le funzioni già comprese sono valori di partenza da controllare lì.
+   - I file allegati dal cliente stanno in un bucket **privato** (`richieste-allegati`, max 5 MB, immagini/PDF/Word/testo); li scarichi dal dettaglio dell'ordine con un link temporaneo.
+   - La consegna urgente (+20%) non entra nel totale finché non la confermi tu sull'ordine.
+   **Prova un mese** (`/prova-un-mese`, voce di menu e pulsante nella home): il cliente prova il sito per un mese pagando **100 €** più le **funzionalità aggiuntive (pagine comprese) scontate del 70%**; il resto del prezzo pieno lo paga dopo il mese, solo se il sito è piaciuto. Prezzo e sconto li imposti da *Preventivi → Listino prezzi e servizi → Impostazioni*.
+   - Ogni tipologia e ogni funzionalità ha la casella **«Disponibile anche nella Prova un mese»** (stesso pannello): da lì decidi cosa si può provare. Di partenza restano fuori sito personalizzato, gestionale, chatbot AI e gestione ordini.
+   - Il preventivo mostra «Da pagare ora» (il mese di prova) e «Resto dopo il mese». Quando confermi l'ordine, il prezzo è quello pieno e «Da pagare ora» è l'importo del mese: il pagamento con carta addebita quello.
+   - **Pagamento in contanti** (ordine normale *e* prova): in *Preventivi → Apri* il blocco «Pagamento in contanti» registra quanto hai ricevuto; l'ordine risulta pagato come con la carta, nasce il progetto e il contratto è pronto da stampare e far firmare. Il resto dopo la prova (o un saldo) lo registri dalla scheda del progetto con **«Registra incasso»**.
+   - Il **contratto della prova** è un secondo modello (*Preventivi → Modello contratto*). È una **bozza**: fallo controllare prima di usarlo.
+   - Dopo l'aggiornamento ripubblica anche il pagamento: `npx supabase functions deploy crea-checkout`.
+7. Prova tutto con la carta di test `4242 4242 4242 4242` (chiavi `sk_test_`), poi passa alle chiavi live.
+
+### Test automatici
+```bash
+npm run test:db   # database: calcolo prezzi, permessi, allegati, prezzi manipolati (Postgres in memoria, nessun database reale)
+npm run test:ui   # browser (Edge/Chrome, EDGE_PATH se serve): modulo, area admin, tutte le pagine — con Supabase simulato
+npm test          # entrambi
+```
+Non sostituiscono una prova vera: **Stripe, le Edge Functions, le email e i permessi reali di Supabase Storage vanno provati con un ordine di prova.**
+
+> Il sito è indicizzabile: `index.html` e `public/robots.txt` consentono Google; le pagine private (`/area`, `/login`, `/ordine/…`) sono `noindex`. Dominio ufficiale: `https://formaweb.shop` (il `www` viene reindirizzato in `vercel.json`).
+
 ### 3. Configura l'autenticazione
 In **Authentication → Sign In / Providers**:
 - **Disattiva "Allow new users to sign up"**. Gli account li crea solo l'admin, e il database comunque assegna sempre il ruolo `collaboratore` ai nuovi utenti.
 - Lascia attivo il provider **Email**.
 
 In **Authentication → URL Configuration**:
-- **Site URL**: l'indirizzo del sito, per esempio `https://tuodominio.it`. In locale usa `http://localhost:5173`.
-- **Redirect URLs**: aggiungi `http://localhost:5173/**` e `https://tuodominio.it/**`. Se usi le anteprime Vercel, aggiungi anche `https://*.vercel.app/**`.
+- **Site URL**: l'indirizzo del sito, per esempio `https://formaweb.shop`. In locale usa `http://localhost:5173`.
+- **Redirect URLs**: aggiungi `http://localhost:5173/**` e `https://formaweb.shop/**`. Se usi le anteprime Vercel, aggiungi anche `https://*.vercel.app/**`.
 
 Facoltativo: in **Authentication → Emails** puoi tradurre in italiano i testi delle email di invito e di reset.
 

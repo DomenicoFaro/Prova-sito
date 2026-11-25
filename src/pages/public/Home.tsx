@@ -80,16 +80,19 @@ function Hero() {
           Siti web che fanno <span className="evidenziato">lavorare</span> la tua attività.
         </h1>
         <p className="sali mx-auto mt-7 max-w-xl text-lg leading-relaxed text-pretty text-slate-600" style={{ animationDelay: '0.16s' }}>
-          Vetrine, negozi online, prenotazioni e gestionali su misura. Belli da vedere e semplici da usare, prima di tutto dal telefono.
+          Forma Web realizza vetrine, negozi online, prenotazioni e gestionali su misura. Belli da vedere e semplici da usare, prima di tutto dal telefono.
         </p>
         <div className="sali mt-9 flex flex-col justify-center gap-3 sm:flex-row" style={{ animationDelay: '0.24s' }}>
-          <Link to="/portfolio" className="btn-primary btn-grande">
-            Guarda i lavori <Icon name="arrowRight" className="h-4 w-4" />
+          <Link to="/sito-su-misura" className="btn-primary btn-grande">
+            Acquista il tuo sito <Icon name="arrowRight" className="h-4 w-4" />
           </Link>
-          <Link to="/#servizi" className="btn-secondary btn-grande">
-            Cosa realizziamo
+          <Link to="/prova-un-mese" className="btn-secondary btn-grande">
+            <Icon name="clock" className="h-4 w-4" /> Prova il tuo sito
           </Link>
         </div>
+        <Link to="/portfolio" className="sali mt-6 inline-block text-sm font-semibold text-brand-700 underline-offset-4 hover:underline" style={{ animationDelay: '0.3s' }}>
+          oppure guarda i lavori
+        </Link>
       </div>
 
       {/* Vetrina: tre siti realizzati, computer e telefono */}
@@ -271,7 +274,7 @@ function Domande() {
   )
 }
 
-/** Invito finale: mostra i contatti solo se sono compilati in config.ts. */
+/** Invito finale. I contatti compaiono solo se sono compilati in config.ts. */
 function Chiusura() {
   const { whatsapp, email } = CONTATTI
   return (
@@ -283,20 +286,21 @@ function Chiusura() {
               Il prossimo sito può essere il tuo.
             </h2>
             <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link to="/sito-su-misura" className="btn-primary btn-grande">
+                Acquista il tuo sito <Icon name="arrowRight" className="h-4 w-4" />
+              </Link>
+              <Link to="/prova-un-mese" className="btn-secondary btn-grande">
+                <Icon name="clock" className="h-4 w-4" /> Prova il tuo sito
+              </Link>
               {whatsapp && (
-                <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer" className="btn-primary btn-grande">
+                <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-grande">
                   <Icon name="chat" className="h-5 w-5" /> Scrivici su WhatsApp
                 </a>
               )}
               {email && (
-                <a href={`mailto:${email}`} className="btn-primary btn-grande">
+                <a href={`mailto:${email}`} className="btn-secondary btn-grande">
                   <Icon name="mail" className="h-5 w-5" /> Scrivici una email
                 </a>
-              )}
-              {!whatsapp && !email && (
-                <Link to="/portfolio" className="btn-primary btn-grande">
-                  Sfoglia i lavori <Icon name="arrowRight" className="h-4 w-4" />
-                </Link>
               )}
             </div>
           </div>

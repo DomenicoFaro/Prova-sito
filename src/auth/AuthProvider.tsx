@@ -9,7 +9,12 @@ interface AuthContextValue {
   /** true finché sessione e profilo non sono stati caricati */
   caricamento: boolean
   errore: string | null
+  /** Titolare: vede e gestisce tutto. */
   isAdmin: boolean
+  /** Socio: stessa area dell'admin, ma solo sul proprio team. */
+  isSocio: boolean
+  /** Admin o socio: accede all'area di gestione. */
+  isGestore: boolean
   ricaricaProfilo: () => Promise<void>
   esci: () => Promise<void>
 }
@@ -85,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       caricamento,
       errore,
       isAdmin: profilo?.ruolo === 'admin' && profilo.attivo,
+      isSocio: profilo?.ruolo === 'socio' && profilo.attivo,
+      isGestore: (profilo?.ruolo === 'admin' || profilo?.ruolo === 'socio') && !!profilo.attivo,
       ricaricaProfilo: () => caricaProfilo(session?.user.id),
       esci,
     }),

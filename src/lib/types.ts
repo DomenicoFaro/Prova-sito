@@ -1,8 +1,9 @@
-export type Ruolo = 'admin' | 'collaboratore'
+export type Ruolo = 'admin' | 'socio' | 'collaboratore'
 export type StatoProgetto = 'in_lavorazione' | 'consegnato' | 'manutenzione'
 export type StatoPagamento = 'pagato' | 'parziale' | 'da_pagare'
 export type StatoRichiesta = 'nuova' | 'letta' | 'gestita'
 export type StatoVendita = 'in_attesa' | 'approvata' | 'rifiutata'
+export type EsitoOpportunita = 'venduto' | 'interessato' | 'non_interessato'
 
 export interface Profilo {
   id: string
@@ -12,6 +13,8 @@ export interface Profilo {
   ruolo: Ruolo
   percentuale_default: number
   attivo: boolean
+  /** Admin o socio che gestisce questo collaboratore (null = l'admin). */
+  responsabile_id: string | null
   created_at: string
 }
 
@@ -27,9 +30,17 @@ export interface Progetto {
   screenshot_url: string | null
   galleria: string[]
   prezzo_totale: number
+  /** Soldi già ricevuti dal cliente (acconto, saldo…): da incassare = prezzo_totale - incassato. */
+  incassato: number
+  /** Progetto in «Prova un mese» fino a questa data (il resto si incassa dopo). */
+  prova_fino_al: string | null
+  /** Ordine del sito (ordini_siti) da cui nasce il progetto, se pagato online. */
+  ordine_id: string | null
   data_consegna: string | null
   stato: StatoProgetto
   pubblico: boolean
+  /** Admin o socio proprietario del progetto (null = l'admin). */
+  gestore_id: string | null
   created_at: string
 }
 
@@ -112,6 +123,32 @@ export interface Vendita {
   created_at: string
 }
 
+/** Riga della tabella `opportunita` (supabase/opportunita.sql). */
+export interface Opportunita {
+  id: string
+  nome: string
+  maps_url: string
+  categoria: string
+  indirizzo: string
+  dettagli: string
+  attiva: boolean
+  /** null = creata dall'admin (per tutti); altrimenti link privato di quel collaboratore. */
+  owner_id: string | null
+  /** Team a cui è destinata un'opportunità condivisa (null = team dell'admin). */
+  team_id: string | null
+  /** Chi l'ha caricata. */
+  creato_da: string | null
+  created_at: string
+}
+
+/** Riga della tabella `opportunita_esiti`: l'esito di un collaboratore su un'opportunità. */
+export interface EsitoOpportunitaRiga {
+  opportunita_id: string
+  collaboratore_id: string
+  esito: EsitoOpportunita
+  updated_at: string
+}
+
 export interface RichiestaContatto {
   id: string
   nome: string
@@ -120,4 +157,41 @@ export interface RichiestaContatto {
   messaggio: string
   stato: StatoRichiesta
   created_at: string
+}
+
+/** Riga della tabella `opportunita_prese`: la presa in carico (12 ore) di un'opportunità. */
+export interface OpportunitaPresa {
+  opportunita_id: string
+  collaboratore_id: string
+  preso_il: string
+  scade_il: string
+}
+
+export type TipoPrezzo = 'sito' | 'servizio' | 'abbonamento'
+
+/** Riga della tabella `prezzi` (supabase/soci.sql + prezzi_abbonamenti.sql): il listino interno, visibile solo a chi ha un account. */
+export interface Prezzo {
+  id: string
+  tipo: TipoPrezzo
+  nome: string
+  descrizione: string
+  /** Prezzo, o minimo se `prezzo_max` è valorizzato. */
+  prezzo: number
+  prezzo_max: number | null
+  valuta: '€' | '$'
+  a_partire_da: boolean
+  /** es. "una tantum", "al mese", "all'anno" */
+  periodicita: string
+  caratteristiche: string[]
+  in_evidenza: boolean
+  ordine: number
+  attivo: boolean
+  created_at: string
+}
+
+/** Riga di `riepilogo_azienda()`: solo importo, data e stato (nessun dato di collaboratori). */
+export interface RigaAzienda {
+  prezzo_totale: number
+  data_riferimento: string
+  stato: StatoProgetto
 }

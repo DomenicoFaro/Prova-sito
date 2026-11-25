@@ -1,0 +1,389 @@
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { useAuth } from '../../../auth/AuthProvider'
+import { Icon } from '../../../components/Icon'
+import { BarraSezione, GrigliaSezioni } from '../../../components/SezioniOpportunita'
+import {
+  BadgeEsitoOpportunita,
+  Caricamento,
+  IntestazionePagina,
+  MessaggioErrore,
+  Modale,
+  Spinner,
+  Vuoto,
+} from '../../../components/ui'
+import { CHIAVE_MIE, costruisciSezioni, filtraPerSezione, idRifiutate } from '../../../lib/opportunita'
+import { messaggioErrore, supabase } from '../../../lib/supabase'
+import type { EsitoOpportunita, EsitoOpportunitaRiga, Opportunita as OpportunitaRiga, OpportunitaPresa, Profilo } from '../../../lib/types'
+import { esegui, useQuery } from '../../../lib/useQuery'
+
+interface FormLink {
+  nome: string
+  maps_url: string
+  categoria: string
+  indirizzo: string
+  dettagli: string
+}
+
+/** Tempo rimasto in formato "3h 20m". */
+function tempoRimasto(scadenza: string, adesso: number): string {
+  const min = Math.max(0, Math.ceil((new Date(scadenza).getTime() - adesso) / 60000))
+  return `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}m`
+}
+
+const FORM_VUOTO: FormLink = { nome: '', maps_url: '', categoria: '', indirizzo: '', dettagli: '' }
+
+export default function Opportunita() {
+  const { profilo, isGestore, isSocio } = useAuth()
+  const [params, setParams] = useSearchParams()
+  const sezione = params.get('sezione')
+  const [inCorso, setInCorso] = useState<string | null>(null)
+  const [errore, setErrore] = useState<string | null>(null)
+  const [modale, setModale] = useState(false)
+  const [inModifica, setInModifica] = useState<OpportunitaRiga | null>(null)
+  const [form, setForm] = useState<FormLink>(FORM_VUOTO)
+  const [salvataggio, setSalvataggio] = useState(false)
+  const [erroreForm, setErroreForm] = useState<string | null>(null)
+  const [daEliminare, setDaEliminare] = useState<OpportunitaRiga | null>(null)
+
+  const { dati, caricamento, errore: erroreCaricamento, ricarica } = useQuery(async () => {
+    // Gli esiti li limita il database: un collaboratore vede i propri, il socio anche quelli del suo team
+    const [opportunita, esiti, prese, persone] = await Promise.all([
+      esegui<OpportunitaRiga[]>(supabase.from('opportunita').select('*').order('created_at', { ascending: false })),
+      esegui<EsitoOpportunitaRiga[]>(supabase.from('opportunita_esiti').select('*')),
+      esegui<OpportunitaPresa[]>(supabase.from('opportunita_prese').select('*').eq('collaboratore_id', profilo?.id ?? '')),
+      isGestore ? esegui<Profilo[]>(supabase.from('profiles').select('*')) : Promise.resolve<Profilo[]>([]),
+    ])
+    return { opportunita, esiti, prese, persone: new Map(persone.map((p) => [p.id, p])) }
+  }, [profilo?.id, isGestore])
+
+  // Orologio: aggiorna il conto alla rovescia e allo scadere ricarica la lista
+  const [adesso, setAdesso] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setAdesso(Date.now()), 30_000)
+    return () => clearInterval(t)
+  }, [])
+
+  const prese = useMemo(() => new Map((dati?.prese ?? []).map((p) => [p.opportunita_id, p])), [dati])
+
+  const esiti = useMemo(
+    () => new Map((dati?.esiti ?? []).filter((e) => e.collaboratore_id === profilo?.id).map((e) => [e.opportunita_id, e.esito])),
+    [dati, profilo?.id],
+  )
+
+  /** Esito dei link caricati dai collaboratori del team (visibili al socio). */
+  const esitiTeam = useMemo(() => new Map((dati?.esiti ?? []).map((e) => [`${e.opportunita_id}:${e.collaboratore_id}`, e.esito])), [dati])
+
+  const rifiutate = useMemo(() => idRifiutate(dati?.opportunita ?? [], dati?.esiti ?? [], profilo?.id ?? ''), [dati, profilo?.id])
+  const sezioni = useMemo(
+    () => costruisciSezioni(dati?.opportunita ?? [], { meId: profilo?.id ?? '', mie: true, persone: isGestore ? (dati?.persone ?? null) : null, rifiutate }),
+    [dati, profilo?.id, isGestore, rifiutate],
+  )
+  const sezioneCorrente = sezioni.find((x) => x.chiave === sezione) ?? null
+  const visibili = useMemo(
+    () => (sezioneCorrente ? filtraPerSezione(dati?.opportunita ?? [], sezioneCorrente.chiave, profilo?.id ?? '', rifiutate) : []),
+    [dati, sezioneCorrente, profilo?.id, rifiutate],
+  )
+  const categorieNote = useMemo(
+    () => Array.from(new Set((dati?.opportunita ?? []).map((o) => o.categoria.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'it')),
+    [dati],
+  )
+
+  const scegli = (chiave: string | null) => {
+    const next = new URLSearchParams(params)
+    if (chiave) next.set('sezione', chiave)
+    else next.delete('sezione')
+    setParams(next)
+  }
+
+  /** Presa in carico ancora valida (non scaduta e senza risposta). */
+  const inCaricoOra = useMemo(
+    () => (dati?.prese ?? []).find((p) => new Date(p.scade_il).getTime() > adesso && !esiti.has(p.opportunita_id)) ?? null,
+    [dati, esiti, adesso],
+  )
+
+  // Allo scadere delle 12 ore aggiorna la pagina (l'opportunità torna agli altri)
+  const scadenzaInCarico = inCaricoOra?.scade_il
+  useEffect(() => {
+    if (!scadenzaInCarico) return
+    const ms = Math.min(new Date(scadenzaInCarico).getTime() - Date.now() + 1000, 2_000_000_000)
+    const t = setTimeout(() => {
+      setAdesso(Date.now())
+      ricarica()
+    }, Math.max(ms, 0))
+    return () => clearTimeout(t)
+  }, [scadenzaInCarico, ricarica])
+
+  async function prendi(o: OpportunitaRiga) {
+    setErrore(null)
+    setInCorso(o.id)
+    const { error } = await supabase.rpc('prendi_in_carico', { p_opp: o.id })
+    setInCorso(null)
+    if (error) setErrore(messaggioErrore(error))
+    ricarica()
+  }
+
+  function apri(o?: OpportunitaRiga) {
+    setErroreForm(null)
+    setInModifica(o ?? null)
+    // Se stai guardando una categoria, il nuovo link parte già in quella categoria
+    const categoriaCorrente = sezioneCorrente?.chiave.startsWith('cat:') ? sezioneCorrente.titolo : ''
+    setForm(o ? { nome: o.nome, maps_url: o.maps_url, categoria: o.categoria, indirizzo: o.indirizzo, dettagli: o.dettagli } : { ...FORM_VUOTO, categoria: categoriaCorrente })
+    setModale(true)
+  }
+
+  async function salva(e: FormEvent) {
+    e.preventDefault()
+    if (!profilo) return
+    setErroreForm(null)
+    const valori = {
+      nome: form.nome.trim(),
+      maps_url: form.maps_url.trim(),
+      categoria: form.categoria.trim(),
+      indirizzo: form.indirizzo.trim(),
+      dettagli: form.dettagli.trim(),
+    }
+    if (!valori.nome) return setErroreForm("Inserisci il nome dell'attività.")
+    if (!/^https?:\/\//i.test(valori.maps_url)) return setErroreForm('Inserisci un link valido (deve iniziare con https://).')
+    setSalvataggio(true)
+    const { error } = inModifica
+      ? await supabase.from('opportunita').update(valori).eq('id', inModifica.id)
+      : await supabase
+          .from('opportunita')
+          // Il socio aggiunge posti per il proprio team (compaiono nelle categorie dei suoi collaboratori);
+          // un collaboratore aggiunge link propri.
+          .insert(isSocio ? { ...valori, owner_id: null, team_id: profilo.id } : { ...valori, owner_id: profilo.id })
+    setSalvataggio(false)
+    if (error) return setErroreForm(messaggioErrore(error))
+    setModale(false)
+    ricarica()
+  }
+
+  async function elimina() {
+    if (!daEliminare) return
+    const { error } = await supabase.from('opportunita').delete().eq('id', daEliminare.id)
+    setDaEliminare(null)
+    if (error) return setErrore(messaggioErrore(error))
+    ricarica()
+  }
+
+  /** Salva l'esito; sui propri link premendo di nuovo lo stesso tasto lo annulla. */
+  async function segna(o: OpportunitaRiga, esito: EsitoOpportunita) {
+    if (!profilo) return
+    setErrore(null)
+    setInCorso(o.id)
+    const { error } =
+      esiti.get(o.id) === esito && o.owner_id
+        ? await supabase.from('opportunita_esiti').delete().eq('opportunita_id', o.id).eq('collaboratore_id', profilo.id)
+        : await supabase
+            .from('opportunita_esiti')
+            .upsert({ opportunita_id: o.id, collaboratore_id: profilo.id, esito, updated_at: new Date().toISOString() })
+    setInCorso(null)
+    if (error) return setErrore(messaggioErrore(error))
+    ricarica()
+  }
+
+  return (
+    <>
+      <IntestazionePagina
+        titolo="Opportunità"
+        sottotitolo={
+          isGestore
+            ? "Le categorie con i posti che hai aggiunto al tuo team, e una cartella per ogni collaboratore con i link che ha caricato lui. In «Le mie opportunità» trovi quelle caricate da te."
+            : "Scegli una categoria, aprile su Google Maps e segna com'è andata. Prendi in carico un'opportunità alla volta: hai 12 ore per rispondere, poi torna disponibile per gli altri. I link che aggiungi tu li trovi in «Le mie opportunità»."
+        }
+        azioni={
+          <button className="btn-primary" onClick={() => apri()}>
+            <Icon name="plus" className="h-4 w-4" /> {isSocio ? 'Aggiungi al team' : 'Aggiungi link'}
+          </button>
+        }
+      />
+
+      {caricamento && !dati ? (
+        <Caricamento />
+      ) : erroreCaricamento ? (
+        <MessaggioErrore onRiprova={ricarica}>{erroreCaricamento}</MessaggioErrore>
+      ) : !sezioneCorrente ? (
+        <div className="space-y-4">
+          {errore && <MessaggioErrore>{errore}</MessaggioErrore>}
+          <GrigliaSezioni sezioni={sezioni} onScegli={scegli} />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <BarraSezione titolo={sezioneCorrente.titolo} onIndietro={() => scegli(null)} />
+          {errore && <MessaggioErrore>{errore}</MessaggioErrore>}
+          {visibili.length === 0 && (
+            <div className="card">
+              <Vuoto icona="pin" titolo="Nessuna opportunità qui">
+                {sezioneCorrente.chiave === CHIAVE_MIE ? (
+                  <>Aggiungi un tuo link con <strong>Aggiungi link</strong>.</>
+                ) : (
+                  'Quando ne arrivano di nuove le trovi in questa categoria.'
+                )}
+              </Vuoto>
+            </div>
+          )}
+          <ul className="grid gap-4 lg:grid-cols-2">
+            {visibili.map((o) => {
+              const mio = o.owner_id === profilo?.id
+              // Il socio modifica i posti condivisi con il suo team; il collaboratore solo i propri link
+              const modificabile = mio || (isSocio && !o.owner_id && o.team_id === profilo?.id)
+              const esitiCollab = isGestore && !o.owner_id ? (dati?.esiti ?? []).filter((e) => e.opportunita_id === o.id) : []
+              const delTeam = !!o.owner_id && !mio
+              const esitoTeam = delTeam ? (esitiTeam.get(`${o.id}:${o.owner_id}`) ?? null) : null
+              const esito = esiti.get(o.id) ?? null
+              const occupato = inCorso === o.id
+              const presa = prese.get(o.id)
+              const presaValida = !!presa && new Date(presa.scade_il).getTime() > adesso
+              const scaduta = !!presa && !presaValida && !esito
+              const puoRispondere = mio || presaValida
+              return (
+                <li key={o.id} className="card flex flex-col p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-900">{o.nome}</p>
+                      <p className="truncate text-sm text-slate-500">
+                        {[o.categoria, o.indirizzo].filter(Boolean).join(' · ') || '—'}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {modificabile && (
+                        <>
+                          <span className="mr-1 text-xs font-semibold text-brand-700">{mio ? 'Tuo' : 'Del team'}</span>
+                          <button className="btn-ghost p-2" onClick={() => apri(o)} aria-label="Modifica link">
+                            <Icon name="edit" className="h-4 w-4" />
+                          </button>
+                          <button className="btn-ghost p-2 text-red-600" onClick={() => setDaEliminare(o)} aria-label="Elimina link">
+                            <Icon name="trash" className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
+                      {delTeam ? (
+                        <>
+                          <span className="mr-1 truncate text-xs font-semibold text-brand-700">{dati?.persone.get(o.owner_id!)?.nome ?? 'Collaboratore'}</span>
+                          <BadgeEsitoOpportunita esito={esitoTeam} />
+                        </>
+                      ) : scaduta ? (
+                        <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">Scaduta</span>
+                      ) : presaValida && !esito ? (
+                        <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
+                          In carico · {tempoRimasto(presa.scade_il, adesso)}
+                        </span>
+                      ) : (
+                        <BadgeEsitoOpportunita esito={esito} />
+                      )}
+                    </div>
+                  </div>
+                  {o.dettagli && <p className="mt-3 text-sm whitespace-pre-line text-slate-700">{o.dettagli}</p>}
+                  <div className="mt-auto flex flex-wrap gap-2 pt-4">
+                    <a href={o.maps_url} target="_blank" rel="noopener noreferrer" className="btn-secondary py-1.5">
+                      <Icon name="pin" className="h-4 w-4" /> Google Maps
+                    </a>
+                    {!o.owner_id && !presa && !isGestore && (
+                      <button
+                        className="btn-primary py-1.5"
+                        disabled={occupato || !!inCaricoOra}
+                        title={inCaricoOra ? 'Hai già un\'opportunità in carico' : undefined}
+                        onClick={() => prendi(o)}
+                      >
+                        {occupato ? <Spinner className="h-4 w-4" /> : <Icon name="check" className="h-4 w-4" />} Prendi in carico
+                      </button>
+                    )}
+                    {puoRispondere && (
+                      <>
+                    <button
+                      className={`btn-secondary py-1.5 ${esito === 'venduto' ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : ''}`}
+                      disabled={occupato}
+                      aria-pressed={esito === 'venduto'}
+                      onClick={() => segna(o, 'venduto')}
+                    >
+                      {occupato ? <Spinner className="h-4 w-4" /> : <Icon name="check" className="h-4 w-4" />} Venduto
+                    </button>
+                    <button
+                      className={`btn-secondary py-1.5 ${esito === 'interessato' ? 'border-amber-300 bg-amber-50 text-amber-700' : ''}`}
+                      disabled={occupato}
+                      aria-pressed={esito === 'interessato'}
+                      onClick={() => segna(o, 'interessato')}
+                    >
+                      {occupato ? <Spinner className="h-4 w-4" /> : <Icon name="handshake" className="h-4 w-4" />} Interessato
+                    </button>
+                    <button
+                      className={`btn-secondary py-1.5 ${esito === 'non_interessato' ? 'border-red-300 bg-red-50 text-red-700' : ''}`}
+                      disabled={occupato}
+                      aria-pressed={esito === 'non_interessato'}
+                      onClick={() => segna(o, 'non_interessato')}
+                    >
+                      {occupato ? <Spinner className="h-4 w-4" /> : <Icon name="ban" className="h-4 w-4" />} Non interessato
+                    </button>
+                      </>
+                    )}
+                  </div>
+                  {esitiCollab.length > 0 && (
+                    <ul className="mt-4 space-y-1.5 border-t border-slate-100 pt-3">
+                      {esitiCollab.map((e) => (
+                        <li key={e.collaboratore_id} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="truncate font-medium text-slate-800">{dati?.persone.get(e.collaboratore_id)?.nome ?? '—'}</span>
+                          <BadgeEsitoOpportunita esito={e.esito} />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+
+      <Modale aperta={modale} titolo={inModifica ? 'Modifica' : isSocio ? 'Aggiungi un posto al tuo team' : 'Aggiungi un tuo link'} onChiudi={() => setModale(false)}>
+        <form onSubmit={salva} className="space-y-4">
+          {erroreForm && <MessaggioErrore>{erroreForm}</MessaggioErrore>}
+          <div>
+            <label className="label" htmlFor="cn">Nome attività</label>
+            <input id="cn" className="input" placeholder="es. Pizzeria Da Mario" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label" htmlFor="cm">Link Google Maps</label>
+            <input id="cm" type="url" className="input" placeholder="https://maps.app.goo.gl/…" value={form.maps_url} onChange={(e) => setForm((f) => ({ ...f, maps_url: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label" htmlFor="cc">Categoria</label>
+              <input id="cc" className="input" list="categorie-note" placeholder="es. Pizzerie" value={form.categoria} onChange={(e) => setForm((f) => ({ ...f, categoria: e.target.value }))} />
+              <datalist id="categorie-note">
+                {categorieNote.map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+            <div>
+              <label className="label" htmlFor="ci">Zona / indirizzo</label>
+              <input id="ci" className="input" value={form.indirizzo} onChange={(e) => setForm((f) => ({ ...f, indirizzo: e.target.value }))} />
+            </div>
+          </div>
+          <div>
+            <label className="label" htmlFor="cd">Dettagli</label>
+            <textarea id="cd" rows={4} className="input" value={form.dettagli} onChange={(e) => setForm((f) => ({ ...f, dettagli: e.target.value }))} />
+          </div>
+          <p className="text-xs text-slate-500">
+            {isSocio
+              ? 'Lo vedranno tutti i collaboratori del tuo team, nella categoria che scegli.'
+              : 'Questo link lo vedi solo tu (e chi gestisce il tuo team).'}
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" className="btn-secondary" onClick={() => setModale(false)}>Annulla</button>
+            <button type="submit" className="btn-primary" disabled={salvataggio}>
+              {salvataggio && <Spinner className="h-4 w-4" />} Salva
+            </button>
+          </div>
+        </form>
+      </Modale>
+
+      <Modale aperta={!!daEliminare} titolo="Eliminare il link?" onChiudi={() => setDaEliminare(null)}>
+        <p className="text-sm text-slate-600"><strong>{daEliminare?.nome}</strong> verrà eliminato.</p>
+        <div className="mt-6 flex justify-end gap-2">
+          <button className="btn-secondary" onClick={() => setDaEliminare(null)}>Annulla</button>
+          <button className="btn-danger" onClick={elimina}>Elimina</button>
+        </div>
+      </Modale>
+    </>
+  )
+}

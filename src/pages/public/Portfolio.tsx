@@ -27,7 +27,7 @@ export default function Portfolio() {
 
   return (
     <>
-      <Seo titolo="Lavori" />
+      <Seo titolo="Portfolio: siti web realizzati" descrizione="I siti web realizzati da Forma Web (formaweb.shop) per attività e professionisti. Guarda i progetti e prova il tuo sito." />
       <section className="container-sito pt-16 pb-10 sm:pt-24 sm:pb-14">
         <p className="sali sopratitolo">Lavori</p>
         <h1 className="sali mt-3 max-w-3xl text-5xl leading-[1.02] font-extrabold tracking-tight text-balance text-brand-950 sm:text-6xl">

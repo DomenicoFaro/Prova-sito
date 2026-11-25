@@ -93,6 +93,14 @@ export default function AdminVendite() {
     }
   }
 
+  /** Gestore del progetto: il socio responsabile del venditore (o il socio stesso); altrimenti l'admin (null). */
+  function gestoreDi(collaboratoreId: string): string | null {
+    const p = dati?.profili.get(collaboratoreId)
+    if (!p) return null
+    if (p.ruolo === 'socio') return p.id
+    return p.responsabile_id
+  }
+
   /** Approva la vendita: crea il progetto e lo assegna al collaboratore con la sua % predefinita. */
   async function creaProgetto(v: Vendita) {
     setErrore(null)
@@ -108,9 +116,12 @@ export default function AdminVendite() {
             categoria: v.tipo_sito,
             descrizione: v.note,
             prezzo_totale: v.prezzo,
+            incassato: Math.min(Number(v.acconto), Number(v.prezzo)),
             data_consegna: v.consegna_prevista,
             stato: 'in_lavorazione',
             pubblico: false,
+            // Il progetto appartiene a chi gestisce il venditore (null = admin)
+            gestore_id: gestoreDi(v.collaboratore_id),
           })
           .select('id')
           .single(),

@@ -35,6 +35,7 @@ const PATHS = {
   file: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Zm0 0v5h5M9 13h6m-6 4h4',
   download: 'M12 4v12m-5-5 5 5 5-5M4 20h16',
   handshake: 'M3 12l4-4 4 2 3-3 7 7-4 4-3-1-2 2-3-1-2-2-3-1 3-3Zm8-2 3 3',
+  pin: 'M12 21s-7-6.1-7-11.5a7 7 0 0 1 14 0C19 14.9 12 21 12 21Zm0-9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
 } as const
 
 export type NomeIcona = keyof typeof PATHS
