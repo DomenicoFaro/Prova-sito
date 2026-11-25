@@ -1,3 +1,4 @@
+import { SITO } from '../config'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import type { Preventivo } from './configuratore'
 import { supabase } from './supabase'
@@ -119,8 +120,10 @@ export function salvaOrdine(o: OrdineSalvato) {
   }
 }
 
+/** Link da dare al cliente: sempre sul dominio ufficiale (tranne quando si prova sul computer). */
 export function linkOrdine(token: string) {
-  return `${window.location.origin}/ordine/${token}`
+  const inLocale = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+  return `${inLocale ? window.location.origin : SITO.url}/ordine/${token}`
 }
 
 /** Legge il messaggio d'errore restituito da una Edge Function. */

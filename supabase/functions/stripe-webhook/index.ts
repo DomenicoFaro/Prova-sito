@@ -2,10 +2,10 @@
 // compilato e lo invia al cliente via email (se Resend è configurato).
 //
 // Da pubblicare SENZA verifica JWT:  supabase functions deploy stripe-webhook --no-verify-jwt
-// Secret: STRIPE_SECRET_KEY (non serve qui), STRIPE_WEBHOOK_SECRET, SITE_URL
+// Secret: STRIPE_SECRET_KEY (non serve qui), STRIPE_WEBHOOK_SECRET
 // Facoltativi (email): RESEND_API_KEY, MAIL_FROM (es. "Forma Web <ordini@formaweb.shop>"), ADMIN_EMAIL, MAIL_REPLY_TO
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { esc, euro, inviaEmail, numeroOrdine } from '../_shared/email.ts'
+import { esc, euro, inviaEmail, numeroOrdine, sito } from '../_shared/email.ts'
 
 const enc = new TextEncoder()
 
@@ -45,8 +45,8 @@ function contrattoHtml(testo: string, titolo: string) {
     )
     .join('')
   return `<!doctype html><html lang="it"><head><meta charset="utf-8"><title>${esc(titolo)}</title>
-<style>body{font:15px/1.6 Georgia,serif;max-width:760px;margin:40px auto;padding:0 20px;color:#111}h2{font:700 16px/1.4 Arial,sans-serif;margin:1.6em 0 .3em}p{margin:.3em 0}</style>
-</head><body>${corpo}</body></html>`
+<style>body{font:15px/1.6 Georgia,serif;max-width:760px;margin:40px auto;padding:0 20px;color:#111}h2{font:700 16px/1.4 Arial,sans-serif;margin:1.6em 0 .3em;color:#0c382b}p{margin:.3em 0}header{font:800 22px/1 Arial,sans-serif;color:#062019;border-bottom:4px solid #cdf564;padding-bottom:12px;margin-bottom:24px}header span{color:#238862}</style>
+</head><body><header>forma<span>web</span></header>${corpo}</body></html>`
 }
 
 function base64Utf8(testo: string) {
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
 
   const numero = numeroOrdine(o.numero)
   const html = contrattoHtml(o.contratto_finale, `Contratto ${numero}`)
-  const link = `${Deno.env.get('SITE_URL')?.replace(/\/+$/, '')}/ordine/${o.token}`
+  const link = `${sito()}/ordine/${o.token}`
 
   const inviata = await inviaEmail({
     a: o.cliente_email,

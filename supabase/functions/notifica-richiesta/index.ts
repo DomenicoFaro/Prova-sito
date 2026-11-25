@@ -2,7 +2,7 @@
 // una email con tutti i dati e il link per aprire la richiesta nell'area riservata.
 //
 // Pubblica con:  supabase functions deploy notifica-richiesta --no-verify-jwt
-// Secret: RESEND_API_KEY, MAIL_FROM, ADMIN_EMAIL, SITE_URL
+// Secret: RESEND_API_KEY, MAIL_FROM, ADMIN_EMAIL
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, json } from '../_shared/cors.ts'
 import { euro, inviaEmail, numeroOrdine, sito } from '../_shared/email.ts'

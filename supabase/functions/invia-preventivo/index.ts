@@ -2,7 +2,7 @@
 // consegna e link per leggere il contratto e pagare.
 //
 // Pubblica con:  supabase functions deploy invia-preventivo   (con verifica JWT: solo utenti loggati)
-// Secret: RESEND_API_KEY, MAIL_FROM, SITE_URL (+ ADMIN_EMAIL/MAIL_REPLY_TO per le risposte del cliente)
+// Secret: RESEND_API_KEY, MAIL_FROM (+ ADMIN_EMAIL/MAIL_REPLY_TO per le risposte del cliente)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, json } from '../_shared/cors.ts'
 import { euro, inviaEmail, numeroOrdine, sito } from '../_shared/email.ts'

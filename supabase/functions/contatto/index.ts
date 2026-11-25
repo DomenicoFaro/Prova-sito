@@ -2,7 +2,7 @@
 // via email a Forma Web. Rispondendo alla mail si scrive direttamente al cliente.
 //
 // Pubblica con:  supabase functions deploy contatto --no-verify-jwt
-// Secret: RESEND_API_KEY, MAIL_FROM, SITE_URL
+// Secret: RESEND_API_KEY, MAIL_FROM
 // Facoltativo: CONTACT_EMAIL (dove arrivano i messaggi, di default formawebshop@gmail.com)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, json } from '../_shared/cors.ts'
