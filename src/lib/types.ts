@@ -1,4 +1,4 @@
-export type Ruolo = 'admin' | 'socio' | 'collaboratore'
+export type Ruolo = 'admin' | 'collaboratore'
 export type StatoProgetto = 'in_lavorazione' | 'consegnato' | 'manutenzione'
 export type StatoPagamento = 'pagato' | 'parziale' | 'da_pagare'
 export type StatoRichiesta = 'nuova' | 'letta' | 'gestita'
@@ -13,8 +13,6 @@ export interface Profilo {
   ruolo: Ruolo
   percentuale_default: number
   attivo: boolean
-  /** Admin o socio che gestisce questo collaboratore (null = l'admin). */
-  responsabile_id: string | null
   created_at: string
 }
 
@@ -39,8 +37,6 @@ export interface Progetto {
   data_consegna: string | null
   stato: StatoProgetto
   pubblico: boolean
-  /** Admin o socio proprietario del progetto (null = l'admin). */
-  gestore_id: string | null
   created_at: string
 }
 
@@ -134,8 +130,6 @@ export interface Opportunita {
   attiva: boolean
   /** null = creata dall'admin (per tutti); altrimenti link privato di quel collaboratore. */
   owner_id: string | null
-  /** Team a cui è destinata un'opportunità condivisa (null = team dell'admin). */
-  team_id: string | null
   /** Chi l'ha caricata. */
   creato_da: string | null
   created_at: string
@@ -169,7 +163,7 @@ export interface OpportunitaPresa {
 
 export type TipoPrezzo = 'sito' | 'servizio' | 'abbonamento'
 
-/** Riga della tabella `prezzi` (supabase/soci.sql + prezzi_abbonamenti.sql): il listino interno, visibile solo a chi ha un account. */
+/** Riga della tabella `prezzi` (listino creato da supabase/soci.sql + prezzi_abbonamenti.sql): il listino interno, visibile solo a chi ha un account. */
 export interface Prezzo {
   id: string
   tipo: TipoPrezzo
@@ -187,11 +181,4 @@ export interface Prezzo {
   ordine: number
   attivo: boolean
   created_at: string
-}
-
-/** Riga di `riepilogo_azienda()`: solo importo, data e stato (nessun dato di collaboratori). */
-export interface RigaAzienda {
-  prezzo_totale: number
-  data_riferimento: string
-  stato: StatoProgetto
 }

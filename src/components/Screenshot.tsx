@@ -1,12 +1,10 @@
 import { useState } from 'react'
-import { hostname } from '../lib/format'
 
-const GRADIENTI = [
-  'from-brand-500 to-violet-600',
-  'from-sky-500 to-brand-600',
-  'from-emerald-500 to-teal-600',
-  'from-amber-500 to-rose-500',
-  'from-fuchsia-500 to-brand-600',
+const SFONDI = [
+  'bg-brand-900 text-lime-accento',
+  'bg-lime-accento text-brand-950',
+  'bg-brand-600 text-white',
+  'bg-brand-100 text-brand-900',
 ]
 
 function hash(s: string) {
@@ -15,18 +13,8 @@ function hash(s: string) {
   return Math.abs(h)
 }
 
-/** Screenshot del sito, con un segnaposto elegante se l'immagine manca. */
-export function Screenshot({
-  src,
-  nome,
-  url,
-  className = '',
-}: {
-  src: string | null | undefined
-  nome: string
-  url?: string | null
-  className?: string
-}) {
+/** Screenshot del sito, con un segnaposto con il nome se l'immagine manca. */
+export function Screenshot({ src, nome, className = '' }: { src: string | null | undefined; nome: string; className?: string }) {
   const [errore, setErrore] = useState(false)
 
   if (src && !errore) {
@@ -42,19 +30,8 @@ export function Screenshot({
   }
 
   return (
-    <div
-      className={`flex h-full w-full flex-col bg-gradient-to-br ${GRADIENTI[hash(nome) % GRADIENTI.length]} ${className}`}
-      aria-label={`Anteprima di ${nome}`}
-    >
-      <div className="flex items-center gap-1.5 bg-black/10 px-3 py-2">
-        <span className="h-2 w-2 rounded-full bg-white/60" />
-        <span className="h-2 w-2 rounded-full bg-white/60" />
-        <span className="h-2 w-2 rounded-full bg-white/60" />
-        {url && <span className="ml-2 truncate text-[10px] font-medium text-white/80">{hostname(url)}</span>}
-      </div>
-      <div className="grid flex-1 place-items-center p-4 text-center">
-        <span className="text-xl font-bold tracking-tight text-white drop-shadow-sm sm:text-2xl">{nome}</span>
-      </div>
+    <div className={`grid h-full w-full place-items-center p-6 text-center ${SFONDI[hash(nome) % SFONDI.length]} ${className}`} aria-label={`Anteprima di ${nome}`}>
+      <span className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{nome}</span>
     </div>
   )
 }

@@ -45,7 +45,7 @@ ordini.push(
     urgenza_richiesta: false, urgenza_confermata: false, totale_indicativo: 734, dettaglio_preventivo: dettaglioProva, approvazione_manuale: false, allegati: [] },
 )
 const progettoProva = { id: 'p1', nome: 'Da Mario', cliente: 'Mario Rossi', url: null, categoria: 'Ristorante / Bar', descrizione: '', funzionalita: [], tecnologie: [], screenshot_url: null, galleria: [],
-  prezzo_totale: 1000, incassato: 300, ordine_id: 'o4', prova_fino_al: '2026-11-10', data_consegna: null, stato: 'in_lavorazione', pubblico: false, gestore_id: null, created_at: '2026-10-10T00:00:00Z' }
+  prezzo_totale: 1000, incassato: 300, ordine_id: 'o4', prova_fino_al: '2026-11-10', data_consegna: null, stato: 'in_lavorazione', pubblico: false, created_at: '2026-10-10T00:00:00Z' }
 const vociAdmin = [...voci, { codice: 'nascosta', gruppo: 'extra', nome: 'Voce nascosta', descrizione: '', prezzo: 10, modalita: 'fisso', pagine_incluse: 0, incluse: [], a_quantita: false, costo_testo: '', ordine: 999, attivo: false }]
 
 const browser = await puppeteer.launch({ executablePath: EDGE, headless: true, args: ['--no-sandbox'] })
@@ -72,7 +72,7 @@ page.on('request', (req) => {
   if (req.method() !== 'GET') chiamate.push({ metodo: req.method(), rotta, query: url.search, body })
   const singolo = (req.headers().accept ?? '').includes('pgrst.object')
   if (url.pathname.endsWith('/profiles')) {
-    const p = { id: 'u-admin', nome: 'Admin', email: 'admin@x.it', avatar_url: null, ruolo, percentuale_default: 0, attivo: true, responsabile_id: null, created_at: '2026-01-01' }
+    const p = { id: 'u-admin', nome: 'Admin', email: 'admin@x.it', avatar_url: null, ruolo, percentuale_default: 0, attivo: true, created_at: '2026-01-01' }
     return rispondi(singolo ? p : [p])
   }
   if (url.pathname.endsWith('/ordini_siti')) return req.method() === 'GET' ? rispondi(ordini) : req.respond({ status: 204, headers: CORS })
@@ -533,11 +533,11 @@ await prova('Riepilogo: carta «Prove in corso» con il resto da incassare e la 
 })
 
 console.log('\nPermessi')
-await prova('Un socio (non admin) NON può gestire preventivi e listino', async () => {
-  ruolo = 'socio'
+await prova('Un collaboratore (non admin) NON può gestire preventivi e listino', async () => {
+  ruolo = 'collaboratore'
   await page.goto(`${BASE}/area/admin/preventivi`, { waitUntil: 'networkidle0' })
-  contiene(await testo(), "Solo l'amministratore gestisce preventivi e ordini")
-  if (/Listino prezzi e servizi/.test(await testo())) throw new Error('il socio vede il listino')
+  eq(new URL(page.url()).pathname, '/area/dashboard')
+  if (/Listino prezzi e servizi/.test(await testo())) throw new Error('il collaboratore vede il listino')
 })
 
 if (errori.length) console.log('\nErrori JavaScript nella pagina:\n - ' + errori.join('\n - '))

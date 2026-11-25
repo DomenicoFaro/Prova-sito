@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
-import { SITO } from '../config'
 import { Icon, type NomeIcona } from './Icon'
 import { Seo } from './Seo'
 import { Avatar } from './Avatar'
+import { Logo } from './Logo'
 
 interface Voce {
   to: string
@@ -24,13 +24,6 @@ const VOCI_ADMIN: Voce[] = [
   { to: '/area/prezzi', label: 'Prezzi', icona: 'euro' },
 ]
 
-// Il socio ha la stessa area dell'admin. Le opportunità condivise le gestisce l'admin:
-// il socio usa la pagina dei collaboratori, dove può aggiungere i propri link.
-// I preventivi dei clienti sono solo dell'admin.
-const VOCI_SOCIO: Voce[] = VOCI_ADMIN.filter((v) => v.to !== '/area/admin/preventivi').map((v) =>
-  v.to === '/area/admin/opportunita' ? { ...v, to: '/area/opportunita' } : v,
-)
-
 const VOCI_COLLABORATORE: Voce[] = [
   { to: '/area/dashboard', label: 'I miei siti', icona: 'chart' },
   { to: '/area/vendite', label: 'Vendite', icona: 'handshake' },
@@ -39,20 +32,20 @@ const VOCI_COLLABORATORE: Voce[] = [
 ]
 
 export function AreaLayout() {
-  const { profilo, isAdmin, isSocio, esci } = useAuth()
+  const { profilo, isAdmin, esci } = useAuth()
   const [aperto, setAperto] = useState(false)
   const { pathname } = useLocation()
 
   useEffect(() => setAperto(false), [pathname])
 
-  const vociRuolo = isAdmin ? VOCI_ADMIN : isSocio ? VOCI_SOCIO : VOCI_COLLABORATORE
+  const vociRuolo = isAdmin ? VOCI_ADMIN : VOCI_COLLABORATORE
   const voci = [...vociRuolo, { to: '/area/profilo', label: 'Il mio profilo', icona: 'user' as const }]
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      <Link to="/" className="flex h-16 shrink-0 items-center px-5" aria-label={`${SITO.titolo} – Home`}>
-        <img src="/logo-compatto.jpg" alt={SITO.titolo} width={480} height={154} className="h-11 w-auto" />
-      </Link>
+      <div className="flex h-16 shrink-0 items-center px-5">
+        <Logo chiaro className="text-lg" />
+      </div>
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Area riservata">
         {voci.map((v) => (
           <NavLink
@@ -73,7 +66,7 @@ export function AreaLayout() {
           <Avatar nome={profilo?.nome ?? ''} url={profilo?.avatar_url} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-white">{profilo?.nome}</p>
-            <p className="truncate text-xs text-slate-400">{isAdmin ? 'Amministratore' : isSocio ? 'Socio' : 'Collaboratore'}</p>
+            <p className="truncate text-xs text-slate-400">{isAdmin ? 'Amministratore' : 'Collaboratore'}</p>
           </div>
           <button onClick={esci} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" title="Esci" aria-label="Esci">
             <Icon name="logout" className="h-5 w-5" />
@@ -87,13 +80,13 @@ export function AreaLayout() {
     <div className="min-h-screen bg-slate-50">
       <Seo titolo="Area riservata" noindex />
       {/* Sidebar desktop */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 bg-black lg:block">{sidebar}</aside>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 bg-brand-950 lg:block">{sidebar}</aside>
 
       {/* Sidebar mobile */}
       {aperto && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-slate-900/50" onClick={() => setAperto(false)} />
-          <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-black shadow-xl">{sidebar}</aside>
+          <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-brand-950 shadow-xl">{sidebar}</aside>
         </div>
       )}
 

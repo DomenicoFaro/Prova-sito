@@ -1,7 +1,7 @@
 // Il cliente ha letto e accettato il contratto: registra l'accettazione e crea la
 // pagina di pagamento Stripe Checkout. Restituisce { url } a cui reindirizzare il cliente.
 //
-// Secret necessari (supabase secrets set ...): STRIPE_SECRET_KEY, SITE_URL
+// Secret necessari (supabase secrets set ...): STRIPE_SECRET_KEY
 // Facoltativi (email di avviso): RESEND_API_KEY, MAIL_FROM, ADMIN_EMAIL
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders, json } from '../_shared/cors.ts'
@@ -13,8 +13,7 @@ Deno.serve(async (req) => {
 
   try {
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')
-    const siteUrl = Deno.env.get('SITE_URL')?.replace(/\/+$/, '')
-    if (!stripeKey || !siteUrl) return json({ error: 'Pagamenti non ancora configurati.' }, 500)
+    if (!stripeKey) return json({ error: 'Pagamenti non ancora configurati.' }, 500)
 
     const { token, firmatario } = await req.json()
     if (typeof token !== 'string' || !/^[0-9a-f-]{36}$/i.test(token)) return json({ error: 'Ordine non valido.' }, 400)
@@ -96,8 +95,8 @@ Deno.serve(async (req) => {
       client_reference_id: o.id,
       'metadata[ordine_id]': o.id,
       'metadata[numero]': numero,
-      success_url: `${siteUrl}/ordine/${token}?pagato=1`,
-      cancel_url: `${siteUrl}/ordine/${token}`,
+      success_url: `${sito()}/ordine/${token}?pagato=1`,
+      cancel_url: `${sito()}/ordine/${token}`,
     })
 
     const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {

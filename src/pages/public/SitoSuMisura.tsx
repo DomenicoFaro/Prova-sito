@@ -266,7 +266,7 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
             : 'Acquista il tuo sito web su misura su formaweb.shop: configura il sito, ricevi il preventivo, firma il contratto e paga online.'
         }
       />
-      <section className="bg-black pt-10 pb-12 text-center text-white">
+      <section className="bg-brand-950 pt-12 pb-14 text-center text-white">
         <div className="container-sito">
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{prova ? 'Prova il tuo sito per un mese' : 'Il tuo sito, su misura'}</h1>
           {prova && dati ? (

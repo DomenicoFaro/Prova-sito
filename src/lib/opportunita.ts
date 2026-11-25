@@ -33,9 +33,9 @@ export function idRifiutate(lista: Opportunita[], esiti: EsitoOpportunitaRiga[],
 
 /**
  * Raggruppa le opportunità in sezioni:
- *  - una per categoria, con le opportunità condivise del team (create da admin o socio);
+ *  - una per categoria, con le opportunità condivise (create dall'admin);
  *  - "Le mie opportunità": quelle caricate da me (se `mie`);
- *  - una per persona (solo admin/socio): i link caricati da ciascun collaboratore del suo team.
+ *  - una per persona (solo admin): i link caricati da ciascun collaboratore.
  */
 export function costruisciSezioni(
   lista: Opportunita[],

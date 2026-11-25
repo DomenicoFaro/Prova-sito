@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
-    "test:db": "node tests/db/test.mjs && node tests/db/parita.mjs",
+    "test:db": "node tests/db/test.mjs && node tests/db/parita.mjs && node tests/db/soci.mjs",
     "test:ui": "node tests/ui/esegui.mjs",
     "test": "npm run test:db && npm run test:ui"
   },

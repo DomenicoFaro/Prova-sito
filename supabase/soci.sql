@@ -5,7 +5,7 @@
 --
 -- Ruoli:
 --   admin  (tu)    vede e fa tutto, su tutti i collaboratori (i tuoi e quelli dei soci).
---   socio  (Diego) ha la tua stessa area, ma vede/gestisce solo il PROPRIO team
+--   socio          ha la tua stessa area, ma vede/gestisce solo il PROPRIO team
 --                  (collaboratori e progetti suoi). Dell'azienda vede solo i
 --                  totali (fatturato), mai i tuoi guadagni né i tuoi collaboratori.
 --   collaboratore  invariato.
@@ -345,7 +345,7 @@ create policy "prese: socio legge il suo team"
 
 -- -----------------------------------------------------------------------------
 -- Opportunità per TEAM: i posti che aggiungi tu li vede solo il tuo team; quelli
--- di Diego solo il suo. Ognuno ha poi «Le mie opportunità» (creato_da = io).
+-- di un socio solo il suo. Ognuno ha poi «Le mie opportunità» (creato_da = io).
 --   team_id    → di chi è il team a cui è destinata un'opportunità condivisa
 --                (null = team dell'admin)
 --   creato_da  → chi l'ha caricata
