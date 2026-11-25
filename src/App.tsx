@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthProvider'
-import { RedirectRuolo, RichiedeAdmin, RichiedeLogin } from './auth/guards'
+import { RedirectRuolo, RichiedeAdmin, RichiedeCliente, RichiedeLogin, RichiedeStaff } from './auth/guards'
 import { AreaLayout } from './components/AreaLayout'
 import { PublicLayout } from './components/PublicLayout'
 import { Caricamento } from './components/ui'
@@ -31,6 +31,12 @@ const AdminCollaboratori = lazy(() => import('./pages/area/admin/AdminCollaborat
 const AdminVendite = lazy(() => import('./pages/area/admin/AdminVendite'))
 const AdminPreventivi = lazy(() => import('./pages/area/admin/AdminPreventivi'))
 const AdminOpportunita = lazy(() => import('./pages/area/admin/AdminOpportunita'))
+const Assistenza = lazy(() => import('./pages/public/Assistenza'))
+const Ticket = lazy(() => import('./pages/area/Ticket'))
+const AdminClienti = lazy(() => import('./pages/area/admin/AdminClienti'))
+const AdminCliente = lazy(() => import('./pages/area/admin/AdminCliente'))
+const AdminRecensioni = lazy(() => import('./pages/area/admin/AdminRecensioni'))
+const AreaCliente = lazy(() => import('./pages/area/cliente/AreaCliente'))
 const AdminVistaCome = lazy(() => import('./pages/area/admin/AdminVistaCome'))
 const AdminVistaComeDettaglio = lazy(() =>
   import('./pages/area/admin/AdminVistaCome').then((m) => ({ default: m.AdminVistaComeDettaglio })),
@@ -52,6 +58,7 @@ export default function App() {
               <Route path="prova-un-mese" element={<SitoSuMisura key="prova" modo="prova" />} />
               <Route path="acquista-sito-su-misura" element={<Navigate to="/sito-su-misura" replace />} />
               <Route path="ordine/:token" element={<Ordine />} />
+              <Route path="assistenza/:token" element={<Assistenza />} />
               <Route path="*" element={<NotFound />} />
             </Route>
 
@@ -62,12 +69,19 @@ export default function App() {
             <Route path="area" element={<RichiedeLogin />}>
               <Route element={<AreaLayout />}>
                 <Route index element={<RedirectRuolo />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="dashboard/:assegnazioneId" element={<DettaglioAssegnazione />} />
-                <Route path="vendite" element={<Vendite />} />
-                <Route path="vendite/nuova" element={<NuovaVendita />} />
-                <Route path="opportunita" element={<Opportunita />} />
-                <Route path="prezzi" element={<Prezzi />} />
+                <Route element={<RichiedeStaff />}>
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="dashboard/:assegnazioneId" element={<DettaglioAssegnazione />} />
+                  <Route path="vendite" element={<Vendite />} />
+                  <Route path="vendite/nuova" element={<NuovaVendita />} />
+                  <Route path="opportunita" element={<Opportunita />} />
+                  <Route path="prezzi" element={<Prezzi />} />
+                </Route>
+                <Route element={<RichiedeCliente />}>
+                  <Route path="cliente" element={<AreaCliente />} />
+                </Route>
+                <Route path="ticket" element={<Ticket />} />
+                <Route path="ticket/:id" element={<Ticket />} />
                 <Route path="profilo" element={<Profilo />} />
 
                 <Route path="admin" element={<RichiedeAdmin />}>
@@ -79,6 +93,9 @@ export default function App() {
                   <Route path="pagamenti" element={<AdminPagamenti />} />
                   <Route path="vendite" element={<AdminVendite />} />
                   <Route path="opportunita" element={<AdminOpportunita />} />
+                  <Route path="clienti" element={<AdminClienti />} />
+                  <Route path="clienti/:id" element={<AdminCliente />} />
+                  <Route path="recensioni" element={<AdminRecensioni />} />
                   <Route path="collaboratori" element={<AdminCollaboratori />} />
                   <Route path="collaboratori/:id" element={<AdminVistaCome />} />
                   <Route path="collaboratori/:id/progetti/:assegnazioneId" element={<AdminVistaComeDettaglio />} />

@@ -15,7 +15,7 @@ export const SITO = {
  */
 export const CONTATTI = {
   whatsapp: '',
-  // Qui arrivano anche i messaggi del modulo «Scrivici» (vedi supabase/functions/contatto)
+  // Proposta al visitatore solo se il modulo «Scrivici» (ticket) non riesce a inviare
   email: 'formawebshop@gmail.com',
 }
 

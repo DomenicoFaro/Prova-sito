@@ -73,7 +73,8 @@ export default function AdminProgettoForm() {
   const [registrazione, setRegistrazione] = useState(false)
 
   const { dati, caricamento, errore: erroreCaricamento, ricarica } = useQuery(async () => {
-    const collaboratori = await esegui<Profilo[]>(supabase.from('profiles').select('*').order('nome'))
+    // I clienti non sono collaboratori: non si possono assegnare ai progetti
+    const collaboratori = (await esegui<Profilo[]>(supabase.from('profiles').select('*').order('nome'))).filter((p) => p.ruolo !== 'cliente')
     if (nuovo) return { collaboratori, progetto: null, assegnazioni: [] as Assegnazione[] }
     const [progetto, ass] = await Promise.all([
       esegui<Progetto | null>(supabase.from('progetti').select('*').eq('id', id).maybeSingle()),

@@ -4,7 +4,9 @@ import { CONTATTI, DOMANDE, FUNZIONI, PASSI, SERVIZI } from '../../config'
 import { Icon } from '../../components/Icon'
 import { Finestra, Telefono } from '../../components/Mockup'
 import { ProjectCard, ProjectCardScheletro } from '../../components/ProjectCard'
+import { quante, SezioneRecensioni, useRecensioni, votoInTesto } from '../../components/Recensioni'
 import { Reveal } from '../../components/Reveal'
+import { Stelle } from '../../components/Stelle'
 import { Seo } from '../../components/Seo'
 import { ModuloContatto } from '../../components/ModuloContatto'
 import { MessaggioErrore } from '../../components/ui'
@@ -14,16 +16,18 @@ export default function Home() {
   const { dati, caricamento, errore, ricarica } = useLavori()
   const lavori = dati ?? []
   const { hash } = useLocation()
+  const recensioni = useRecensioni()
 
   // I progetti arrivano dopo e allungano la pagina: si torna sulla sezione richiesta
   useEffect(() => {
     if (!caricamento && hash) document.getElementById(hash.slice(1))?.scrollIntoView()
-  }, [caricamento])
+  }, [caricamento, recensioni.elenco.length])
 
   return (
     <>
       <Seo />
-      <Hero />
+      <Hero voto={recensioni.media} totale={recensioni.elenco.length} />
+      <SezioneRecensioni {...recensioni} />
       <Clienti lavori={lavori} />
       <Servizi lavori={lavori} />
 
@@ -67,7 +71,7 @@ export default function Home() {
   )
 }
 
-function Hero() {
+function Hero({ voto, totale }: { voto: number; totale: number }) {
   return (
     <section className="pt-16 sm:pt-24">
       <div className="container-sito text-center">
@@ -94,6 +98,16 @@ function Hero() {
         <Link to="/portfolio" className="sali mt-6 inline-block text-sm font-semibold text-brand-700 underline-offset-4 hover:underline" style={{ animationDelay: '0.3s' }}>
           oppure guarda i lavori
         </Link>
+        {totale > 0 && (
+          <div className="sali mt-6">
+            <Link to="/#recensioni" className="inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full border border-slate-200 bg-white px-5 py-2.5 shadow-sm transition hover:border-amber-300 hover:shadow-md">
+              <Stelle voto={voto} />
+              <span className="text-sm font-semibold text-brand-950">
+                {votoInTesto(voto)} su 5 · {quante(totale)}
+              </span>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Vetrina: tre siti realizzati, computer e telefono */}
@@ -275,9 +289,9 @@ function Domande() {
   )
 }
 
-/** Invito finale con il modulo per scriverci. WhatsApp ed email compaiono se compilati in config.ts. */
+/** Invito finale con il modulo per scriverci. WhatsApp compare se compilato in config.ts. */
 function Contatti() {
-  const { whatsapp, email } = CONTATTI
+  const { whatsapp } = CONTATTI
   return (
     <section id="contatti" className="scroll-mt-20 pb-24 sm:pb-32">
       <div className="container-sito">
@@ -287,13 +301,8 @@ function Contatti() {
               <p className="text-sm font-semibold tracking-wide text-brand-800">Contatti</p>
               <h2 className="mt-3 text-4xl leading-[1.05] font-extrabold tracking-tight text-balance sm:text-5xl">Il prossimo sito può essere il tuo.</h2>
               <p className="mx-auto mt-5 max-w-md text-lg leading-relaxed text-brand-900 lg:mx-0">
-                Hai una domanda o un’idea? Raccontaci cosa ti serve: ti rispondiamo via email.
+                Hai una domanda o un’idea? Raccontaci cosa ti serve: apriamo un ticket e ti rispondiamo in chat, qui sul sito.
               </p>
-              {email && (
-                <a href={`mailto:${email}`} className="mt-6 inline-flex items-center gap-2.5 font-semibold break-all underline-offset-4 hover:underline">
-                  <Icon name="mail" className="h-5 w-5 shrink-0" /> {email}
-                </a>
-              )}
               <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap lg:justify-start">
                 <Link to="/sito-su-misura" className="btn-primary btn-grande">
                   Acquista il tuo sito <Icon name="arrowRight" className="h-4 w-4" />

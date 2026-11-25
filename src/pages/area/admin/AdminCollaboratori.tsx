@@ -20,7 +20,7 @@ interface FormCollab {
 
 const VUOTO: FormCollab = { nome: '', email: '', ruolo: 'collaboratore', percentuale_default: '0', attivo: true, password: '' }
 
-const ETICHETTA_RUOLO: Record<Ruolo, string> = { admin: 'Admin', collaboratore: 'Collaboratore' }
+const ETICHETTA_RUOLO: Record<Ruolo, string> = { admin: 'Admin', collaboratore: 'Collaboratore', cliente: 'Cliente' }
 
 export default function AdminCollaboratori() {
   const { profilo: io } = useAuth()
@@ -32,7 +32,7 @@ export default function AdminCollaboratori() {
 
   const { dati, caricamento, errore: erroreCaricamento, ricarica } = useQuery(async () => {
     const [profili, guadagni] = await Promise.all([
-      esegui<Profilo[]>(supabase.from('profiles').select('*').order('ruolo').order('nome')),
+      esegui<Profilo[]>(supabase.from('profiles').select('*').neq('ruolo', 'cliente').order('ruolo').order('nome')),
       esegui<Guadagno[]>(supabase.from('v_guadagni').select('collaboratore_id, guadagno, pagato, residuo, progetto_id')),
     ])
     return { profili, guadagni }

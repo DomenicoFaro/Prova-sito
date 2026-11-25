@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { chiudiCassaforte } from '../lib/cassaforte'
 import { supabase } from '../lib/supabase'
 import type { Profilo } from '../lib/types'
 
@@ -11,6 +12,8 @@ interface AuthContextValue {
   errore: string | null
   /** Titolare: vede e gestisce tutto. */
   isAdmin: boolean
+  /** Cliente dell’agenzia: vede solo i propri siti, accessi e recensione. */
+  isCliente: boolean
   ricaricaProfilo: () => Promise<void>
   esci: () => Promise<void>
 }
@@ -54,6 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: sub } = supabase.auth.onAuthStateChange((evento, nuovaSessione) => {
       setSession(nuovaSessione)
+      // Cambiando utente la cassaforte si richiude
+      if (evento === 'SIGNED_IN' || evento === 'SIGNED_OUT') chiudiCassaforte()
       if (evento === 'SIGNED_IN' || evento === 'SIGNED_OUT' || evento === 'USER_UPDATED') {
         // Non si può fare await dentro il callback (deadlock noto di supabase-js)
         setTimeout(() => {
@@ -72,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [caricaProfilo])
 
   const esci = useCallback(async () => {
+    chiudiCassaforte()
     await supabase.auth.signOut()
     setProfilo(null)
     setSession(null)
@@ -86,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       caricamento,
       errore,
       isAdmin: profilo?.ruolo === 'admin' && profilo.attivo,
+      isCliente: profilo?.ruolo === 'cliente' && profilo.attivo,
       ricaricaProfilo: () => caricaProfilo(session?.user.id),
       esci,
     }),

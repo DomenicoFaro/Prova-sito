@@ -1,29 +1,20 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { CONTATTI } from '../config'
-import { supabase } from '../lib/supabase'
+import { messaggioErrore, supabase } from '../lib/supabase'
+import { salvaTicket, ticketSalvati, type TicketSalvato } from '../lib/ticket'
 import { Icon } from './Icon'
 import { MessaggioErrore, Spinner } from './ui'
 
 const VUOTO = { nome: '', email: '', telefono: '', messaggio: '', controllo: '' }
 
-type Errore = { testo: string; scriviDiretto?: boolean }
-
-/** Il server spiega cosa non va solo per dati errati (400) o troppi invii (429). */
-async function leggiErrore(errore: unknown): Promise<Errore> {
-  const risposta = (errore as { context?: unknown }).context
-  if (risposta instanceof Response && (risposta.status === 400 || risposta.status === 429)) {
-    const corpo = await risposta.json().catch(() => null)
-    if (corpo?.error) return { testo: corpo.error, scriviDiretto: risposta.status === 429 }
-  }
-  return { testo: 'Non è stato possibile inviare il messaggio.', scriviDiretto: true }
-}
-
-/** «Scrivici»: il messaggio arriva via email a Forma Web (funzione Supabase `contatto`). */
+/** «Scrivici»: apre un ticket e porta alla chat privata sul sito. */
 export function ModuloContatto() {
   const [dati, setDati] = useState(VUOTO)
   const [invio, setInvio] = useState(false)
-  const [errore, setErrore] = useState<Errore | null>(null)
-  const [inviatoA, setInviatoA] = useState('')
+  const [errore, setErrore] = useState<{ testo: string; scriviDiretto?: boolean } | null>(null)
+  const [aperto, setAperto] = useState<TicketSalvato | null>(null)
+  const [precedenti] = useState(ticketSalvati)
 
   const campo = (nome: keyof typeof VUOTO) => ({
     name: nome,
@@ -40,29 +31,33 @@ export function ModuloContatto() {
 
     setErrore(null)
     setInvio(true)
-    try {
-      const { error } = await supabase.functions.invoke('contatto', { body: dati })
-      if (error) setErrore(await leggiErrore(error))
-      else {
-        setInviatoA(dati.email.trim())
-        setDati(VUOTO)
-      }
-    } catch (err) {
-      setErrore(await leggiErrore(err))
-    } finally {
-      setInvio(false)
+    const { data, error } = await supabase.rpc('apri_ticket', { p: dati })
+    setInvio(false)
+    if (error || !data?.token) {
+      // Le frasi del database spiegano cosa correggere; per tutto il resto si propone l'email
+      const chiaro = ['22023', '54000'].includes(error?.code ?? '')
+      return setErrore(chiaro ? { testo: messaggioErrore(error), scriviDiretto: error?.code === '54000' } : { testo: 'Non è stato possibile inviare il messaggio.', scriviDiretto: true })
     }
+    const nuovo = { token: data.token as string, numero: data.numero as number }
+    salvaTicket(nuovo)
+    setAperto(nuovo)
+    setDati(VUOTO)
   }
 
-  if (inviatoA) {
+  if (aperto) {
     return (
       <div role="status" className="flex h-full min-h-96 flex-col items-center justify-center text-center">
-        <span className="grid h-16 w-16 place-items-center rounded-full bg-brand-600 text-white">
+        <span className="grid h-16 w-16 place-items-center rounded-full bg-lime-accento text-brand-950">
           <Icon name="check" className="h-8 w-8" />
         </span>
-        <h3 className="mt-6 text-3xl font-bold tracking-tight text-brand-950">Messaggio inviato</h3>
-        <p className="mt-3 max-w-xs leading-relaxed break-words text-slate-600">Grazie! Ti rispondiamo all’indirizzo {inviatoA}.</p>
-        <button type="button" className="btn-secondary mt-8" onClick={() => setInviatoA('')}>
+        <h3 className="mt-6 text-3xl font-bold tracking-tight text-brand-950">Ticket n. {aperto.numero} aperto</h3>
+        <p className="mt-3 max-w-xs leading-relaxed text-slate-600">
+          Ti rispondiamo nella chat. <strong>Salva il link</strong>: è la tua chat privata.
+        </p>
+        <Link to={`/assistenza/${aperto.token}`} className="btn-primary btn-grande mt-7">
+          <Icon name="chat" className="h-5 w-5" /> Apri la chat
+        </Link>
+        <button type="button" className="btn-ghost mt-2" onClick={() => setAperto(null)}>
           Scrivi un altro messaggio
         </button>
       </div>
@@ -77,6 +72,16 @@ export function ModuloContatto() {
   return (
     <form onSubmit={invia} noValidate className="space-y-4">
       <h3 className="text-2xl font-bold tracking-tight text-brand-950">Scrivici</h3>
+      {precedenti.length > 0 && (
+        <p className="rounded-2xl bg-nebbia p-3 text-sm text-slate-700">
+          Le tue chat:{' '}
+          {precedenti.map((t) => (
+            <Link key={t.token} to={`/assistenza/${t.token}`} className="mr-3 font-semibold whitespace-nowrap text-brand-700 underline underline-offset-2">
+              ticket n. {t.numero}
+            </Link>
+          ))}
+        </p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block sm:col-span-2">
           <span className="label">Nome</span>
@@ -116,8 +121,8 @@ export function ModuloContatto() {
       )}
 
       <button type="submit" className="btn-primary btn-grande w-full" disabled={invio}>
-        {invio ? <Spinner className="h-5 w-5" /> : <Icon name="mail" className="h-5 w-5" />}
-        {invio ? 'Invio in corso…' : 'Invia il messaggio'}
+        {invio ? <Spinner className="h-5 w-5" /> : <Icon name="chat" className="h-5 w-5" />}
+        {invio ? 'Invio in corso…' : 'Apri la richiesta'}
       </button>
       <p className="text-center text-xs text-slate-500">Usiamo questi dati solo per risponderti.</p>
     </form>
