@@ -1,22 +1,16 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ProjectCard } from '../../components/ProjectCard'
+import { ProjectCard, ProjectCardScheletro } from '../../components/ProjectCard'
 import { Reveal } from '../../components/Reveal'
 import { Seo } from '../../components/Seo'
-import { Caricamento, MessaggioErrore, Vuoto } from '../../components/ui'
-import { supabase } from '../../lib/supabase'
-import type { ProgettoPortfolio } from '../../lib/types'
-import { esegui, useQuery } from '../../lib/useQuery'
+import { MessaggioErrore, Vuoto } from '../../components/ui'
+import { useLavori } from '../../data/lavori'
 
 export default function Portfolio() {
   const [params, setParams] = useSearchParams()
   const filtro = params.get('categoria') ?? ''
 
-  const { dati, caricamento, errore, ricarica } = useQuery(() =>
-    esegui<ProgettoPortfolio[]>(
-      supabase.from('portfolio').select('*').order('data_consegna', { ascending: false, nullsFirst: false }),
-    ),
-  )
+  const { dati, caricamento, errore, ricarica } = useLavori()
 
   const categorie = useMemo(
     () => Array.from(new Set((dati ?? []).map((p) => p.categoria).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'it')),
@@ -33,29 +27,26 @@ export default function Portfolio() {
 
   return (
     <>
-      <Seo titolo="Tutti i progetti" />
-      <section className="border-b border-slate-100 bg-gradient-to-b from-brand-50/60 to-white">
-        <div className="container-sito py-14 sm:py-20">
-          <Reveal>
-            <p className="text-sm font-semibold tracking-wide text-brand-600 uppercase">Portfolio</p>
-            <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Tutti i progetti</h1>
-            <p className="mt-4 max-w-2xl text-slate-600">Filtra per categoria o apri un progetto per vederne i dettagli.</p>
-          </Reveal>
-        </div>
+      <Seo titolo="Lavori" />
+      <section className="container-sito pt-16 pb-10 sm:pt-24 sm:pb-14">
+        <p className="sali sopratitolo">Lavori</p>
+        <h1 className="sali mt-3 max-w-3xl text-5xl leading-[1.02] font-extrabold tracking-tight text-balance text-brand-950 sm:text-6xl">
+          Ogni attività ha la sua <span className="evidenziato">forma</span>.
+        </h1>
+        <p className="sali mt-6 max-w-xl text-lg leading-relaxed text-slate-600">Scegli una categoria o apri un progetto per vederlo da vicino.</p>
       </section>
 
-      <section className="container-sito py-10 sm:py-14">
+      <section className="container-sito pb-24 sm:pb-32">
         {categorie.length > 1 && (
-          <div className="-mx-4 mb-8 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" role="tablist" aria-label="Filtra per categoria">
+          <div className="-mx-5 mb-12 flex gap-2 overflow-x-auto px-5 py-1 sm:mx-0 sm:flex-wrap sm:px-0" role="group" aria-label="Filtra per categoria">
             {['', ...categorie].map((c) => {
               const attivo = c === filtro
               return (
                 <button
                   key={c || 'tutti'}
-                  role="tab"
-                  aria-selected={attivo}
+                  aria-pressed={attivo}
                   onClick={() => scegli(c)}
-                  className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition ${attivo ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  className={`btn shrink-0 ${attivo ? 'bg-brand-900 text-white' : 'bg-nebbia text-slate-700 hover:bg-brand-100'}`}
                 >
                   {c || 'Tutti'}
                 </button>
@@ -64,19 +55,19 @@ export default function Portfolio() {
           </div>
         )}
 
-        {caricamento ? (
-          <Caricamento testo="Carico il portfolio…" />
-        ) : errore ? (
+        {errore ? (
           <MessaggioErrore onRiprova={ricarica}>Non è stato possibile caricare il portfolio. {errore}</MessaggioErrore>
-        ) : filtrati.length === 0 ? (
+        ) : !caricamento && filtrati.length === 0 ? (
           <Vuoto titolo="Nessun progetto in questa categoria" />
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filtrati.map((p, i) => (
-              <Reveal key={p.id} ritardo={(i % 3) * 80}>
-                <ProjectCard progetto={p} />
-              </Reveal>
-            ))}
+          <div className="grid gap-x-10 gap-y-16 md:grid-cols-2">
+            {caricamento
+              ? [0, 1, 2, 3].map((i) => <ProjectCardScheletro key={i} />)
+              : filtrati.map((p, i) => (
+                  <Reveal key={p.id} ritardo={(i % 2) * 100}>
+                    <ProjectCard progetto={p} />
+                  </Reveal>
+                ))}
           </div>
         )}
       </section>

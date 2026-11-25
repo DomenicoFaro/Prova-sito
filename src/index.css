@@ -1,20 +1,25 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque", "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
 
-  /* Colore d'accento del brand: cambia questi valori per personalizzare la palette */
-  --color-brand-50: #eef2ff;
-  --color-brand-100: #e0e7ff;
-  --color-brand-200: #c7d2fe;
-  --color-brand-300: #a5b4fc;
-  --color-brand-400: #818cf8;
-  --color-brand-500: #6366f1;
-  --color-brand-600: #4f46e5;
-  --color-brand-700: #4338ca;
-  --color-brand-800: #3730a3;
-  --color-brand-900: #312e81;
-  --color-brand-950: #1e1b4b;
+  /* Palette: verde pino (brand) + lime (accento). Cambia questi valori per personalizzarla. */
+  --color-brand-50: #eef8f2;
+  --color-brand-100: #d7eee1;
+  --color-brand-200: #b0ddc5;
+  --color-brand-300: #7cc4a2;
+  --color-brand-400: #47a57d;
+  --color-brand-500: #238862;
+  --color-brand-600: #156c4e;
+  --color-brand-700: #115740;
+  --color-brand-800: #0f4534;
+  --color-brand-900: #0c382b;
+  --color-brand-950: #062019;
+
+  --color-lime-accento: #cdf564;
+  --color-carta: #fbfcf9;
+  --color-nebbia: #f0f4ec;
 }
 
 @layer base {
@@ -25,28 +30,43 @@
   body {
     @apply bg-slate-50 text-slate-800 antialiased;
   }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+  }
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-brand-500;
+  }
+  ::selection {
+    background: var(--color-lime-accento);
+    color: var(--color-brand-950);
   }
 }
 
 @utility container-sito {
-  @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+  @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
 }
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
 }
 @utility btn-primary {
-  @apply btn bg-brand-600 text-white shadow-sm shadow-brand-600/20 hover:bg-brand-700;
+  @apply btn bg-brand-900 text-white hover:bg-brand-700;
 }
 @utility btn-secondary {
-  @apply btn border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50;
+  @apply btn border border-slate-200 bg-white text-slate-800 hover:border-brand-900/30 hover:bg-nebbia;
+}
+@utility btn-accento {
+  @apply btn bg-lime-accento text-brand-950 hover:brightness-95;
 }
 @utility btn-ghost {
   @apply btn text-slate-600 hover:bg-slate-100 hover:text-slate-900;
 }
 @utility btn-danger {
   @apply btn bg-red-600 text-white hover:bg-red-700;
+}
+@utility btn-grande {
+  @apply px-7 py-3.5 text-base;
 }
 @utility input {
   @apply block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500;
@@ -67,65 +87,49 @@
   }
 }
 
-/* Logo: bordi dell'immagine sfumati, così il fondo nero si scioglie in quello della pagina */
-.logo-sfumato {
-  -webkit-mask-image: radial-gradient(ellipse 60% 62% at 50% 50%, #000 80%, transparent 100%);
-  mask-image: radial-gradient(ellipse 60% 62% at 50% 50%, #000 80%, transparent 100%);
+/* Titoli delle sezioni pubbliche */
+@utility sopratitolo {
+  @apply text-sm font-semibold tracking-wide text-brand-600;
+}
+@utility titolo-sezione {
+  @apply text-4xl leading-[1.05] font-bold tracking-tight text-balance text-brand-950 sm:text-5xl;
 }
 
-/* Entrata del logo: da sfocato e trasparente a nitido */
-@keyframes logo-entrata {
-  from {
-    opacity: 0;
-    filter: blur(14px);
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    filter: blur(0);
-    transform: none;
-  }
-}
-.logo-entrata {
-  animation: logo-entrata 1.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+/* Parola evidenziata con il lime */
+.evidenziato {
+  background: linear-gradient(transparent 62%, var(--color-lime-accento) 62%, var(--color-lime-accento) 92%, transparent 92%);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding: 0 0.08em;
 }
 
-/* Comparsa in dissolvenza (per i pulsanti sotto al logo) */
-@keyframes dissolvenza {
+/* Entrata del contenuto in cima alla pagina */
+@keyframes sali {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(18px);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-.dissolvenza {
-  animation: dissolvenza 0.9s ease-out both;
+.sali {
+  animation: sali 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Bagliore blu dietro al logo che "respira" piano */
-@keyframes bagliore {
+/* Telefoni che oscillano piano */
+@keyframes galleggia {
   0%,
   100% {
-    opacity: 0.35;
-    transform: translate(-50%, -50%) scale(1);
+    translate: 0 0;
   }
   50% {
-    opacity: 0.6;
-    transform: translate(-50%, -50%) scale(1.08);
+    translate: 0 -10px;
   }
 }
-.bagliore {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  border-radius: 9999px;
-  background: radial-gradient(closest-side, rgb(37 99 235 / 0.55), rgb(14 165 233 / 0.15) 60%, transparent);
-  filter: blur(40px);
-  animation: bagliore 6s ease-in-out infinite;
-  pointer-events: none;
+.galleggia {
+  animation: galleggia 7s ease-in-out infinite;
 }
 
 /* Animazioni leggere allo scroll */
@@ -139,9 +143,8 @@
   transform: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .logo-entrata,
-  .dissolvenza,
-  .bagliore {
+  .sali,
+  .galleggia {
     animation: none;
   }
   .reveal {

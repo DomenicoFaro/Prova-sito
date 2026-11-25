@@ -334,7 +334,7 @@ export default function AdminProgettoForm() {
           <section className="card space-y-4 p-5 sm:p-6">
             <h2 className="font-semibold text-slate-900">Screenshot</h2>
             <div className="aspect-[16/10] overflow-hidden rounded-xl border border-slate-200">
-              <Screenshot src={form.screenshot_url} nome={form.nome || 'Anteprima'} url={form.url} />
+              <Screenshot src={form.screenshot_url} nome={form.nome || 'Anteprima'} />
             </div>
             <div className="flex flex-wrap gap-2">
               <label className="btn-secondary cursor-pointer">

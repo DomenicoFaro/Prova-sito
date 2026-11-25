@@ -98,10 +98,11 @@ npm run dev           # http://localhost:5173
 ---
 
 ## Personalizzazione
-- **Nome, slogan, email, telefono e WhatsApp**: `src/config.ts`. Aggiorna anche `<title>` e i meta tag in `index.html` e il testo di `public/og-image.svg`.
-- **Colori**: le variabili `--color-brand-*` in `src/index.css`. Oggi sono impostate su indaco; per cambiarle basta sostituire la scala di colori.
-- **Font**: Plus Jakarta Sans, caricato da Google Fonts in `index.html`.
-- **Screenshot del portfolio**: caricali da **Admin → Progetti → (progetto) → Screenshot**. Senza screenshot il sito mostra un'anteprima grafica con il nome del progetto.
+- **Testi di home, servizi, domande e contatti**: `src/config.ts`. I contatti compaiono solo se compilati.
+- **Colori**: le variabili `--color-brand-*` (verde pino), `--color-lime-accento`, `--color-carta` e `--color-nebbia` in `src/index.css`.
+- **Font**: Bricolage Grotesque (titoli) e Instrument Sans (testo), caricati da Google Fonts in `index.html`.
+- **Logo**: `src/components/Logo.tsx`.
+- **Screenshot del portfolio**: caricali da **Admin → Progetti → (progetto) → Screenshot**. Per i siti già realizzati ci sono immagini e testi di riserva in `public/lavori/` e `src/data/lavori.ts`, usati solo se i campi sono vuoti. Senza immagine il sito mostra un riquadro con il nome del progetto.
 
 ## Sicurezza: come sono applicati i permessi
 I permessi sono garantiti **nel database** con le policy RLS, non solo nell'interfaccia:

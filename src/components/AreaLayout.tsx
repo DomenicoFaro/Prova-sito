@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
-import { SITO } from '../config'
 import { Icon, type NomeIcona } from './Icon'
 import { Seo } from './Seo'
 import { Avatar } from './Avatar'
+import { Logo } from './Logo'
 
 interface Voce {
   to: string
@@ -37,9 +37,9 @@ export function AreaLayout() {
 
   const sidebar = (
     <div className="flex h-full flex-col">
-      <Link to="/" className="flex h-16 shrink-0 items-center px-5" aria-label={`${SITO.titolo} – Home`}>
-        <img src="/logo-compatto.jpg" alt={SITO.titolo} width={480} height={154} className="h-11 w-auto" />
-      </Link>
+      <div className="flex h-16 shrink-0 items-center px-5">
+        <Logo chiaro className="text-lg" />
+      </div>
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Area riservata">
         {voci.map((v) => (
           <NavLink
@@ -74,13 +74,13 @@ export function AreaLayout() {
     <div className="min-h-screen bg-slate-50">
       <Seo titolo="Area riservata" />
       {/* Sidebar desktop */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 bg-black lg:block">{sidebar}</aside>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 bg-brand-950 lg:block">{sidebar}</aside>
 
       {/* Sidebar mobile */}
       {aperto && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-slate-900/50" onClick={() => setAperto(false)} />
-          <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-black shadow-xl">{sidebar}</aside>
+          <aside className="absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-brand-950 shadow-xl">{sidebar}</aside>
         </div>
       )}
 
