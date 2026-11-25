@@ -83,6 +83,9 @@ Il pagamento usa **Stripe**: nessun canone mensile, solo commissione sulle vendi
    - Dopo l'aggiornamento ripubblica anche il pagamento: `npx supabase functions deploy crea-checkout`.
 7. Prova tutto con la carta di test `4242 4242 4242 4242` (chiavi `sk_test_`), poi passa alle chiavi live.
 
+### Anteprima con dati inventati
+`npm run anteprima` apre il sito su http://localhost:5200 con un database finto in memoria (stessi script SQL e permessi). Account: `admin@demo.it`, `collab@demo.it`, `cliente@demo.it`, password `demo1234`. Non tocca il database vero.
+
 ### Test automatici
 ```bash
 npm run test:db   # database: calcolo prezzi, permessi, allegati, prezzi manipolati (Postgres in memoria, nessun database reale)
@@ -149,12 +152,19 @@ npm run dev           # http://localhost:5173
 
 ---
 
-## Modulo «Scrivici» (contatti)
-In fondo alla home c'è il modulo per scrivere a Forma Web. Il messaggio viene salvato nella tabella `richieste_contatto` (già creata da `schema.sql`) e spedito a **formawebshop@gmail.com**; rispondendo alla mail si scrive al cliente. Serve Resend (punto 6 di «Acquista il tuo sito») e la funzione va pubblicata una volta:
-```bash
-npx supabase functions deploy contatto --no-verify-jwt
-```
-Per cambiare destinatario: `npx supabase secrets set CONTACT_EMAIL=...` (e aggiorna `CONTATTI.email` in `src/config.ts`). Se l'invio non riesce, il sito propone al cliente di scrivere direttamente a quell'indirizzo.
+## Clienti, accessi e recensioni
+1. **Database**: dopo tutti gli altri script esegui [`supabase/clienti_recensioni.sql`](supabase/clienti_recensioni.sql).
+2. **Chiudi le registrazioni**: Supabase → **Authentication → Sign In / Providers** → disattiva *Allow new users to sign up*. Gli account li crea solo l'admin.
+3. **Clienti** (*Area riservata → Clienti*): crea l'account (email e password che comunichi tu) e aggiungi i siti acquistati.
+4. **Cassaforte**: la prima volta scegli la **password principale** (non è recuperabile). Per ogni cliente attivi la sua cassaforte e inserisci gli accessi (Google, Vercel, Supabase, Resend, altri). Nel database finiscono solo dati cifrati. Il cliente li legge dalla sua area con il **codice** che gli consegni.
+5. **Recensioni**: le può scrivere solo un cliente con almeno un sito registrato (una a testa, modificabile). Vanno online subito nella home; da *Area riservata → Recensioni* puoi nasconderle o eliminarle.
+
+## Ticket e chat (contatti)
+Il modulo «Scrivici» in fondo alla home apre un **ticket**: non parte nessuna email. Serve lo stesso script dei clienti (`supabase/clienti_recensioni.sql`).
+- Chi scrive senza account riceve un **link privato** (`/assistenza/<codice>`) con la chat; il link resta salvato anche sul suo dispositivo.
+- I clienti con account aprono e seguono i ticket da *Area riservata → Assistenza*.
+- L'**admin** vede tutti i ticket; il **collaboratore** quelli dei siti che segue (si sceglie nel sito del cliente, oppure assegnando il ticket).
+- **Notifiche**: numero nel menu, avviso in pagina e, se si preme *Attiva le notifiche*, avviso del dispositivo. Arrivano mentre l'area riservata è aperta.
 
 ## Personalizzazione
 - **Testi di home, servizi, domande e contatti**: `src/config.ts`. I contatti compaiono solo se compilati.

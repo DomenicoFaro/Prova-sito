@@ -7,7 +7,7 @@ import { formatPercentuale } from '../../lib/format'
 import { BUCKET_AVATARS, caricaImmagine, messaggioErrore, supabase } from '../../lib/supabase'
 
 export default function Profilo() {
-  const { profilo, isAdmin, ricaricaProfilo } = useAuth()
+  const { profilo, isAdmin, isCliente, ricaricaProfilo } = useAuth()
   const [nome, setNome] = useState(profilo?.nome ?? '')
   const [salvataggio, setSalvataggio] = useState(false)
   const [caricaFoto, setCaricaFoto] = useState(false)
@@ -70,8 +70,9 @@ export default function Profilo() {
 
   return (
     <>
-      <IntestazionePagina titolo="Il mio profilo" sottotitolo="Puoi modificare nome, foto e password." />
+      <IntestazionePagina titolo="Il mio profilo" sottotitolo={isCliente ? `${profilo.email} · puoi cambiare la password.` : 'Puoi modificare nome, foto e password.'} />
       <div className="grid gap-6 lg:grid-cols-2">
+        {!isCliente && (
         <form onSubmit={salvaNome} className="card space-y-5 p-5 sm:p-6">
           <h2 className="font-semibold text-slate-900">Dati personali</h2>
           {msg && (msg.tipo === 'ok' ? <MessaggioSuccesso>{msg.testo}</MessaggioSuccesso> : <MessaggioErrore>{msg.testo}</MessaggioErrore>)}
@@ -107,6 +108,7 @@ export default function Profilo() {
             {salvataggio && <Spinner className="h-4 w-4" />} Salva
           </button>
         </form>
+        )}
 
         <form onSubmit={cambiaPassword} className="card space-y-5 p-5 sm:p-6">
           <h2 className="font-semibold text-slate-900">Cambia password</h2>

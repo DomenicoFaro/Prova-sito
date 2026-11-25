@@ -1,4 +1,4 @@
-export type Ruolo = 'admin' | 'collaboratore'
+export type Ruolo = 'admin' | 'collaboratore' | 'cliente'
 export type StatoProgetto = 'in_lavorazione' | 'consegnato' | 'manutenzione'
 export type StatoPagamento = 'pagato' | 'parziale' | 'da_pagare'
 export type StatoRichiesta = 'nuova' | 'letta' | 'gestita'
@@ -181,4 +181,80 @@ export interface Prezzo {
   ordine: number
   attivo: boolean
   created_at: string
+}
+
+/** Riga di `siti_cliente` (supabase/clienti_recensioni.sql): un sito acquistato. */
+export interface SitoCliente {
+  id: string
+  cliente_id: string
+  nome: string
+  url: string
+  data_acquisto: string
+  note: string
+  /** Chi segue il sito: riceve la notifica dei ticket */
+  collaboratore_id: string | null
+  created_at: string
+}
+
+/** Un accesso (Google, Vercel…): nel database esiste solo cifrato. */
+export interface DatiAccesso {
+  servizio: string
+  nome: string
+  cognome: string
+  /** Data di nascita */
+  data: string
+  email: string
+  password: string
+  link: string
+  note: string
+}
+export type Accesso = DatiAccesso & { id: string }
+
+export interface RecensionePubblica {
+  id: string
+  stelle: number
+  testo: string
+  firma: string
+  attivita: string
+  created_at: string
+}
+export interface Recensione extends RecensionePubblica {
+  cliente_id: string
+  visibile: boolean
+}
+
+export interface Ticket {
+  id: string
+  numero: number
+  token: string
+  cliente_id: string | null
+  sito_nome: string
+  collaboratore_id: string | null
+  nome: string
+  email: string
+  telefono: string
+  oggetto: string
+  stato: 'aperto' | 'chiuso'
+  ultimo_autore: 'richiedente' | 'staff'
+  ultimo_messaggio_il: string
+  letto_admin_il: string | null
+  letto_collaboratore_il: string | null
+  letto_richiedente_il: string | null
+  created_at: string
+}
+export interface MessaggioTicket {
+  id: string
+  autore: 'richiedente' | 'staff'
+  autore_nome: string
+  testo: string
+  created_at: string
+}
+/** Quello che vede chi apre la chat con il link privato */
+export interface TicketPubblico {
+  numero: number
+  oggetto: string
+  stato: Ticket['stato']
+  nome: string
+  created_at: string
+  messaggi: MessaggioTicket[]
 }

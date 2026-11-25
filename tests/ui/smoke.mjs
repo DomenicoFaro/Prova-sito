@@ -28,7 +28,7 @@ async function pagina(ruolo, id) {
     const tab = url.pathname.split('/').pop()
     const singolo = (req.headers().accept ?? '').includes('pgrst.object')
     if (tab === 'profiles') { const p = { id, nome: 'Utente', email: 'u@x.it', avatar_url: null, ruolo, percentuale_default: 20, attivo: true, created_at: '2026-01-01' }; return r(singolo ? p : [p]) }
-    if (tab === 'leggi_ordine') return r(null)
+    if (tab === 'leggi_ordine' || tab === 'leggi_ticket') return r(null)
     if (req.method() !== 'GET') return req.respond({ status: 201, headers: CORS })
     return r(dati[tab] ?? [])
   })
@@ -39,9 +39,10 @@ async function pagina(ruolo, id) {
 }
 
 const gruppi = [
-  [null, 'u0', ['/', '/portfolio', '/prezzi', '/sito-su-misura', '/acquista-sito-su-misura', '/prova-un-mese', '/ordine/11111111-2222-3333-4444-555555555555', '/login', '/password-dimenticata', '/pagina-inesistente']],
-  ['admin', 'ua', ['/area', '/area/admin', '/area/admin/progetti', '/area/admin/progetti/nuovo', '/area/admin/progetti/p1', '/area/admin/preventivi', '/area/admin/pagamenti', '/area/admin/vendite', '/area/admin/opportunita', '/area/admin/collaboratori', '/area/prezzi', '/area/profilo']],
-  ['collaboratore', 'uc', ['/area', '/area/dashboard', '/area/vendite', '/area/vendite/nuova', '/area/opportunita', '/area/prezzi', '/area/profilo']],
+  [null, 'u0', ['/', '/portfolio', '/prezzi', '/sito-su-misura', '/acquista-sito-su-misura', '/prova-un-mese', '/ordine/11111111-2222-3333-4444-555555555555', '/login', '/password-dimenticata', '/pagina-inesistente', '/assistenza/11111111-2222-3333-4444-555555555555']],
+  ['admin', 'ua', ['/area', '/area/admin', '/area/admin/progetti', '/area/admin/progetti/nuovo', '/area/admin/progetti/p1', '/area/admin/preventivi', '/area/admin/pagamenti', '/area/admin/vendite', '/area/admin/opportunita', '/area/admin/collaboratori', '/area/admin/clienti', '/area/admin/clienti/ua', '/area/admin/recensioni', '/area/ticket', '/area/ticket/t1', '/area/prezzi', '/area/profilo']],
+  ['cliente', 'ul', ['/area', '/area/cliente', '/area/ticket', '/area/profilo', '/area/prezzi', '/area/admin']],
+  ['collaboratore', 'uc', ['/area', '/area/dashboard', '/area/vendite', '/area/vendite/nuova', '/area/opportunita', '/area/ticket', '/area/prezzi', '/area/profilo']],
 ]
 
 let totale = 0, problemi = 0

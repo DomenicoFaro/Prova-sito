@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { Icon, type NomeIcona } from './Icon'
 import { Seo } from './Seo'
 import { Avatar } from './Avatar'
 import { Logo } from './Logo'
+import { useTicket } from '../lib/ticket'
 
 interface Voce {
   to: string
@@ -15,30 +16,46 @@ interface Voce {
 
 const VOCI_ADMIN: Voce[] = [
   { to: '/area/admin', label: 'Riepilogo', icona: 'chart', end: true },
+  { to: '/area/ticket', label: 'Ticket', icona: 'inbox' },
   { to: '/area/admin/progetti', label: 'Progetti', icona: 'folder' },
   { to: '/area/admin/vendite', label: 'Vendite', icona: 'handshake' },
   { to: '/area/admin/preventivi', label: 'Preventivi', icona: 'cart' },
   { to: '/area/admin/opportunita', label: 'Opportunità', icona: 'pin' },
   { to: '/area/admin/pagamenti', label: 'Pagamenti', icona: 'wallet' },
+  { to: '/area/admin/clienti', label: 'Clienti', icona: 'user' },
+  { to: '/area/admin/recensioni', label: 'Recensioni', icona: 'chat' },
   { to: '/area/admin/collaboratori', label: 'Collaboratori', icona: 'users' },
   { to: '/area/prezzi', label: 'Prezzi', icona: 'euro' },
 ]
 
 const VOCI_COLLABORATORE: Voce[] = [
   { to: '/area/dashboard', label: 'I miei siti', icona: 'chart' },
+  { to: '/area/ticket', label: 'Ticket', icona: 'inbox' },
   { to: '/area/vendite', label: 'Vendite', icona: 'handshake' },
   { to: '/area/opportunita', label: 'Opportunità', icona: 'pin' },
   { to: '/area/prezzi', label: 'Prezzi', icona: 'euro' },
 ]
 
+const VOCI_CLIENTE: Voce[] = [
+  { to: '/area/cliente', label: 'Il mio sito', icona: 'globe' },
+  { to: '/area/ticket', label: 'Assistenza', icona: 'chat' },
+]
+
 export function AreaLayout() {
-  const { profilo, isAdmin, esci } = useAuth()
+  const { profilo, isAdmin, isCliente, esci } = useAuth()
   const [aperto, setAperto] = useState(false)
   const { pathname } = useLocation()
 
   useEffect(() => setAperto(false), [pathname])
 
-  const vociRuolo = isAdmin ? VOCI_ADMIN : VOCI_COLLABORATORE
+  // Ticket con messaggi da leggere: numero nel menu, nel titolo della scheda e avviso in pagina
+  const ticket = useTicket(profilo?.id, profilo?.ruolo)
+  useEffect(() => {
+    const titolo = document.title.replace(/^\(\d+\) /, '')
+    document.title = ticket.nonLetti ? `(${ticket.nonLetti}) ${titolo}` : titolo
+  }, [ticket.nonLetti, pathname])
+
+  const vociRuolo = isAdmin ? VOCI_ADMIN : isCliente ? VOCI_CLIENTE : VOCI_COLLABORATORE
   const voci = [...vociRuolo, { to: '/area/profilo', label: 'Il mio profilo', icona: 'user' as const }]
 
   const sidebar = (
@@ -58,6 +75,11 @@ export function AreaLayout() {
           >
             <Icon name={v.icona} className="h-5 w-5" />
             {v.label}
+            {v.to === '/area/ticket' && ticket.nonLetti > 0 && (
+              <span className="ml-auto rounded-full bg-lime-accento px-2 py-0.5 text-xs font-bold text-brand-950" aria-label={`${ticket.nonLetti} da leggere`}>
+                {ticket.nonLetti}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -66,7 +88,7 @@ export function AreaLayout() {
           <Avatar nome={profilo?.nome ?? ''} url={profilo?.avatar_url} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-white">{profilo?.nome}</p>
-            <p className="truncate text-xs text-slate-400">{isAdmin ? 'Amministratore' : 'Collaboratore'}</p>
+            <p className="truncate text-xs text-slate-400">{isAdmin ? 'Amministratore' : isCliente ? 'Cliente' : 'Collaboratore'}</p>
           </div>
           <button onClick={esci} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" title="Esci" aria-label="Esci">
             <Icon name="logout" className="h-5 w-5" />
@@ -96,9 +118,23 @@ export function AreaLayout() {
             <Icon name="menu" />
           </button>
           <span className="font-bold text-slate-900">Area riservata</span>
+          {ticket.nonLetti > 0 && (
+            <Link to="/area/ticket" className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-lime-accento px-3 py-1 text-sm font-bold text-brand-950">
+              <Icon name="chat" className="h-4 w-4" /> {ticket.nonLetti}
+            </Link>
+          )}
         </header>
         <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          <Outlet />
+          {ticket.nonLetti > 0 && !pathname.startsWith('/area/ticket') && (
+            <Link to="/area/ticket" role="status" className="mb-5 flex items-center gap-3 rounded-2xl bg-brand-900 p-4 text-sm font-semibold text-white hover:bg-brand-800">
+              <Icon name="chat" className="h-5 w-5 shrink-0 text-lime-accento" />
+              <span className="flex-1">
+                {ticket.nonLetti === 1 ? 'Hai un ticket con un nuovo messaggio' : `Hai ${ticket.nonLetti} ticket con nuovi messaggi`}
+              </span>
+              <Icon name="arrowRight" className="h-4 w-4 shrink-0" />
+            </Link>
+          )}
+          <Outlet context={ticket} />
         </main>
       </div>
     </div>

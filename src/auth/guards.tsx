@@ -21,8 +21,21 @@ export function RichiedeAdmin() {
   return <Outlet />
 }
 
-/** Reindirizza /area alla dashboard giusta in base al ruolo. */
+/** Pagine di chi lavora con l'agenzia: un cliente torna alla sua. */
+export function RichiedeStaff() {
+  const { isCliente } = useAuth()
+  if (isCliente) return <Navigate to="/area/cliente" replace />
+  return <Outlet />
+}
+
+export function RichiedeCliente() {
+  const { isCliente } = useAuth()
+  if (!isCliente) return <Navigate to="/area" replace />
+  return <Outlet />
+}
+
+/** Reindirizza /area alla pagina giusta in base al ruolo. */
 export function RedirectRuolo() {
-  const { isAdmin } = useAuth()
-  return <Navigate to={isAdmin ? '/area/admin' : '/area/dashboard'} replace />
+  const { isAdmin, isCliente } = useAuth()
+  return <Navigate to={isAdmin ? '/area/admin' : isCliente ? '/area/cliente' : '/area/dashboard'} replace />
 }

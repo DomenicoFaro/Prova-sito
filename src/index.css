@@ -139,6 +139,39 @@
   animation: galleggia 7s ease-in-out infinite;
 }
 
+/* Recensioni che scorrono: si fermano passandoci sopra */
+.scorrimento {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+}
+.nastro {
+  display: flex;
+  width: max-content;
+  padding-bottom: 1.5rem;
+  animation: nastro linear infinite;
+}
+.scorrimento:hover .nastro,
+.scorrimento:focus-within .nastro,
+.scorrimento:focus .nastro {
+  animation-play-state: paused;
+}
+@keyframes nastro {
+  to {
+    translate: -50% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scorrimento {
+    overflow-x: auto;
+  }
+  .nastro {
+    animation: none;
+  }
+  .nastro [aria-hidden='true'] {
+    display: none;
+  }
+}
+
 /* Animazioni leggere allo scroll */
 .reveal {
   opacity: 0;
