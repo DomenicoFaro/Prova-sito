@@ -2,9 +2,11 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { Chat } from '../../components/Chat'
+import { NotificheDispositivo } from '../../components/NotificheDispositivo'
 import { Icon } from '../../components/Icon'
 import { Caricamento, IntestazionePagina, MessaggioErrore, Modale, Spinner, Vuoto } from '../../components/ui'
 import { formatDataOra } from '../../lib/format'
+import { notificaTicket } from '../../lib/push'
 import { messaggioErrore, supabase } from '../../lib/supabase'
 import { ATTESA_CHAT, daLeggere, ticketCambiati, useAggiornamento, type useTicket } from '../../lib/ticket'
 import type { MessaggioTicket, Profilo, SitoCliente, Ticket as RigaTicket } from '../../lib/types'
@@ -23,7 +25,6 @@ function Elenco() {
   const { ticket, errore, ricarica } = useOutletContext<Contesto>()
   const [filtro, setFiltro] = useState<'aperto' | 'chiuso'>('aperto')
   const [nuovo, setNuovo] = useState(false)
-  const [permesso, setPermesso] = useState(() => ('Notification' in window ? Notification.permission : 'denied'))
 
   const visibili = (ticket ?? []).filter((t) => t.stato === filtro)
 
@@ -35,20 +36,15 @@ function Elenco() {
           isCliente ? 'Scrivi a Forma Web: ti risponde qui in chat.' : isAdmin ? 'Tutte le richieste arrivate dal sito. Rispondi in chat.' : 'Le richieste dei siti che segui. Rispondi in chat.'
         }
         azioni={
-          <>
-            {permesso === 'default' && (
-              <button className="btn-secondary" onClick={() => Notification.requestPermission().then(setPermesso)}>
-                <Icon name="alert" className="h-4 w-4" /> Attiva le notifiche
-              </button>
-            )}
-            {isCliente && (
-              <button className="btn-primary" onClick={() => setNuovo(true)}>
-                <Icon name="plus" className="h-4 w-4" /> Nuovo ticket
-              </button>
-            )}
-          </>
+          isCliente && (
+            <button className="btn-primary" onClick={() => setNuovo(true)}>
+              <Icon name="plus" className="h-4 w-4" /> Nuovo ticket
+            </button>
+          )
         }
       />
+
+      <NotificheDispositivo />
 
       <div className="mb-4 flex gap-2" role="group" aria-label="Stato">
         {(['aperto', 'chiuso'] as const).map((s) => (
@@ -117,6 +113,7 @@ function NuovoTicket({ aperta, onChiudi }: { aperta: boolean; onChiudi: () => vo
     const { data, error } = await supabase.rpc('apri_ticket', { p: form })
     setInvio(false)
     if (error || !data?.id) return setErrore(messaggioErrore(error))
+    notificaTicket()
     setForm({ sito_id: '', oggetto: '', messaggio: '' })
     onChiudi()
     ticketCambiati()
@@ -229,7 +226,7 @@ function Conversazione({ id }: { id: string }) {
           {isAdmin && (
             <label className="block">
               <span className="label">Collaboratore</span>
-              <select className="input" value={t.collaboratore_id ?? ''} onChange={(e) => azione(supabase.rpc('assegna_ticket', { p_ticket: t.id, p_collaboratore: e.target.value || null }))}>
+              <select className="input" value={t.collaboratore_id ?? ''} onChange={(e) => azione(supabase.rpc('assegna_ticket', { p_ticket: t.id, p_collaboratore: e.target.value || null })).then(notificaTicket)}>
                 <option value="">Nessuno (solo io)</option>
                 {dati!.persone.filter((p) => p.attivo || p.id === t.collaboratore_id).map((p) => (
                   <option key={p.id} value={p.id}>{p.nome}</option>
@@ -253,6 +250,7 @@ function Conversazione({ id }: { id: string }) {
         mio={isCliente ? 'richiedente' : 'staff'}
         onInvia={async (testo) => {
           await esegui(supabase.rpc('rispondi_ticket', { p_ticket: t.id, p_testo: testo }))
+          notificaTicket()
           await aggiorna()
           ticketCambiati()
         }}

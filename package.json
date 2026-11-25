@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "anteprima": "node tests/anteprima/avvia.mjs",
     "typecheck": "tsc -b",
-    "test:db": "node tests/db/test.mjs && node tests/db/parita.mjs && node tests/db/soci.mjs && node tests/db/clienti.mjs",
+    "test:db": "node tests/db/test.mjs && node tests/db/parita.mjs && node tests/db/soci.mjs && node tests/db/clienti.mjs && node tests/db/push.mjs",
     "test:ui": "node tests/ui/esegui.mjs",
     "test": "npm run test:db && npm run test:ui"
   },

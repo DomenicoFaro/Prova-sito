@@ -4,6 +4,7 @@ import { Chat } from '../../components/Chat'
 import { Icon } from '../../components/Icon'
 import { Seo } from '../../components/Seo'
 import { Caricamento, MessaggioErrore, Vuoto } from '../../components/ui'
+import { notificaTicket } from '../../lib/push'
 import { supabase } from '../../lib/supabase'
 import { ATTESA_CHAT, useAggiornamento } from '../../lib/ticket'
 import type { TicketPubblico } from '../../lib/types'
@@ -28,6 +29,7 @@ export default function Assistenza() {
 
   async function invia(testo: string) {
     await esegui(supabase.rpc('scrivi_ticket', { p_token: token, p_testo: testo }))
+    notificaTicket()
     await aggiorna()
   }
 

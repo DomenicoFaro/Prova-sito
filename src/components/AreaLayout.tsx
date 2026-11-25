@@ -53,6 +53,9 @@ export function AreaLayout() {
   useEffect(() => {
     const titolo = document.title.replace(/^\(\d+\) /, '')
     document.title = ticket.nonLetti ? `(${ticket.nonLetti}) ${titolo}` : titolo
+    // Numero sull'icona dell'app (dove il dispositivo lo permette)
+    const app = navigator as { setAppBadge?: (n: number) => Promise<void>; clearAppBadge?: () => Promise<void> }
+    ;(ticket.nonLetti ? app.setAppBadge?.(ticket.nonLetti) : app.clearAppBadge?.())?.catch(() => {})
   }, [ticket.nonLetti, pathname])
 
   const vociRuolo = isAdmin ? VOCI_ADMIN : isCliente ? VOCI_CLIENTE : VOCI_COLLABORATORE

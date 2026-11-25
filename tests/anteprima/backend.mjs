@@ -27,16 +27,18 @@ export async function preparaDb() {
   await db.exec(STUB_ACCOUNT)
   await db.exec(sql('rimuovi_soci.sql'))
   await db.exec(sql('clienti_recensioni.sql'))
+  await db.exec(sql('notifiche_push.sql'))
   return db
 }
 
 export const PASSWORD_DEMO = 'demo1234'
 
-/** Esegue `fn` come visitatore (sub vuoto) o come utente collegato. */
+/** Esegue `fn` come visitatore (sub vuoto), come server ('service') o come utente collegato. */
 export function come(db, sub, fn) {
   return db.transaction(async (tx) => {
-    await tx.query(`select set_config('request.jwt.claim.sub', $1, true)`, [sub ?? ''])
-    await tx.exec(`set local role ${sub ? 'authenticated' : 'anon'}`)
+    const server = sub === 'service'
+    await tx.query(`select set_config('request.jwt.claim.sub', $1, true)`, [server ? '' : (sub ?? '')])
+    await tx.exec(`set local role ${server ? 'service_role' : sub ? 'authenticated' : 'anon'}`)
     return fn(tx)
   })
 }
@@ -193,7 +195,8 @@ async function funzione(db, tx, fn, argomenti) {
 const jwt = (o) => 'x.' + Buffer.from(JSON.stringify(o)).toString('base64url') + '.y'
 const idDa = (autorizzazione) => {
   try {
-    const sub = JSON.parse(Buffer.from(autorizzazione.split(' ')[1].split('.')[1], 'base64url').toString()).sub
+    const { sub, role } = JSON.parse(Buffer.from(autorizzazione.split(' ')[1].split('.')[1], 'base64url').toString())
+    if (role === 'service_role') return 'service'
     return /^[0-9a-f-]{36}$/i.test(sub) ? sub : null
   } catch {
     return null
@@ -245,6 +248,8 @@ export async function avviaBackend(porta, { demo = true } = {}) {
         return rispondi(200, await utente(chi))
       }
       if (url.pathname === '/auth/v1/logout') return rispondi(204)
+      // Le funzioni sul server nell'anteprima non spediscono nulla (le notifiche si provano online)
+      if (url.pathname === '/functions/v1/notifica-ticket' && corpo?.azione === 'chiave') return rispondi(200, { chiave: 'BP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A8' })
       if (url.pathname.startsWith('/functions/v1/')) return rispondi(200, { ok: true })
 
       const rpc = url.pathname.match(/^\/rest\/v1\/rpc\/(\w+)$/)

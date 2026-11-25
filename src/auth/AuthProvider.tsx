@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { chiudiCassaforte } from '../lib/cassaforte'
+import { disattivaPush } from '../lib/push'
 import { supabase } from '../lib/supabase'
 import type { Profilo } from '../lib/types'
 
@@ -78,6 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const esci = useCallback(async () => {
     chiudiCassaforte()
+    // Uscendo, questo dispositivo non riceve più le notifiche (senza far aspettare troppo)
+    await Promise.race([disattivaPush().catch(() => {}), new Promise((ok) => setTimeout(ok, 2500))])
     await supabase.auth.signOut()
     setProfilo(null)
     setSession(null)
