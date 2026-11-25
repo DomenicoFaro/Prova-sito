@@ -43,9 +43,9 @@ const SEZIONI: { tipo: TipoPrezzo; titolo: string }[] = [
   { tipo: 'abbonamento', titolo: 'Abbonamenti' },
 ]
 
-/** Listino interno: lo vedono tutti quelli che hanno un account (non è pubblico); lo modificano admin e soci. */
+/** Listino interno: lo vedono tutti quelli che hanno un account (non è pubblico); lo modifica l'admin. */
 export default function Prezzi() {
-  const { isGestore } = useAuth()
+  const { isAdmin } = useAuth()
   const [modale, setModale] = useState<'nuovo' | Prezzo | null>(null)
   const [form, setForm] = useState<FormPrezzo>(VUOTO)
   const [salvataggio, setSalvataggio] = useState(false)
@@ -150,12 +150,12 @@ export default function Prezzi() {
       <IntestazionePagina
         titolo="Prezzi"
         sottotitolo={
-          isGestore
-            ? 'Il listino interno: lo vedono tutti i collaboratori, non è pubblico. Le voci nascoste le vedi solo tu e i soci.'
+          isAdmin
+            ? 'Il listino interno: lo vedono tutti i collaboratori, non è pubblico. Le voci nascoste le vedi solo tu.'
             : 'Il listino dei nostri siti, servizi e abbonamenti. Usalo come riferimento quando parli con un cliente.'
         }
         azioni={
-          isGestore && (
+          isAdmin && (
             <button className="btn-primary" onClick={() => apriNuovo()}>
               <Icon name="plus" className="h-4 w-4" /> Nuova voce
             </button>
@@ -175,7 +175,7 @@ export default function Prezzi() {
       ) : !dati?.length ? (
         <div className="card">
           <Vuoto icona="euro" titolo="Nessun prezzo nel listino">
-            {isGestore ? 'Aggiungi la prima voce con "Nuova voce".' : 'Il listino verrà pubblicato a breve.'}
+            {isAdmin ? 'Aggiungi la prima voce con "Nuova voce".' : 'Il listino verrà pubblicato a breve.'}
           </Vuoto>
         </div>
       ) : (
@@ -199,7 +199,7 @@ export default function Prezzi() {
                             </p>
                           )}
                         </div>
-                        {isGestore && (
+                        {isAdmin && (
                           <div className="-mr-2 -mt-1 flex shrink-0">
                             <button className="btn-ghost p-2" onClick={() => toggleAttivo(p)} aria-label={p.attivo ? `Nascondi ${p.nome}` : `Mostra ${p.nome}`}>
                               <Icon name={p.attivo ? 'ban' : 'eye'} className="h-4 w-4" />

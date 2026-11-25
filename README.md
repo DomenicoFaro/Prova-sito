@@ -12,7 +12,7 @@ Il sito ha due parti:
 ```
 supabase/
   schema.sql                     tabelle, view, is_admin(), policy RLS, bucket Storage
-  seed.sql                       i due progetti del portfolio e il collaboratore di prova "Diego"
+  seed.sql                       i due progetti di esempio del portfolio
   functions/crea-collaboratore/  Edge Function che crea gli account e invia l'invito
 src/
   config.ts                      titolo e descrizione del sito
@@ -40,12 +40,11 @@ src/
 Apri una nuova query, incolla [`supabase/opportunita.sql`](supabase/opportunita.sql) e premi **Run**.
 L'admin gestisce le attività da **Area riservata → Opportunità** (link Google Maps + dettagli, modifica, nascondi, elimina) e vede l'esito di ogni collaboratore. I collaboratori le vedono in sola lettura e premono **Fatto** o **Non accettato** (premendo di nuovo lo stesso tasto l'esito si annulla).
 
-### 2c. Soci e listino prezzi
-Apri una nuova query, incolla [`supabase/soci.sql`](supabase/soci.sql) e premi **Run** (dopo `account.sql`, `vendite.sql` e `opportunita.sql`).
-- **Admin** (tu): vede e gestisce tutto. **Socio** (es. Diego): stessa area, ma vede e gestisce solo il proprio team (collaboratori, progetti, vendite, pagamenti) e, dell'azienda, solo il fatturato totale. Non vede i tuoi guadagni né i tuoi collaboratori.
-- Crea il socio da **Collaboratori → Nuovo account → Ruolo: Socio**. Un socio può aggiungere collaboratori solo sotto di sé; tu puoi sceglierne il team (il tuo o quello di un socio).
-- **Prezzi**: listino interno (non pubblico), visibile a tutti quelli che hanno un account su **Area riservata → Prezzi**. Admin e soci lo modificano; i prezzi possono essere intervalli (500–600) in € o $.
-- **Opportunità**: organizzate per categorie. Ogni collaboratore ha anche «Le mie opportunità»; l'admin vede le cartelle di tutti i collaboratori, il socio solo quelle del suo team.
+### 2c. Listino prezzi
+Apri una nuova query, incolla [`supabase/soci.sql`](supabase/soci.sql) e premi **Run** (dopo `account.sql`, `vendite.sql` e `opportunita.sql`). Il nome del file è storico: crea il listino prezzi e le funzioni usate dagli altri script.
+- **Prezzi**: listino interno (non pubblico), visibile a tutti quelli che hanno un account su **Area riservata → Prezzi**. Lo modifica l'admin; i prezzi possono essere intervalli (500–600) in € o $.
+- **Opportunità**: organizzate per categorie. Ogni collaboratore ha anche «Le mie opportunità»; l'admin vede le cartelle di tutti i collaboratori.
+- **Ruoli**: solo **admin** e **collaboratore**. Dopo tutti gli altri script esegui [`supabase/rimuovi_soci.sql`](supabase/rimuovi_soci.sql), che toglie il vecchio ruolo «Socio» (leggi le note in cima al file: la riassegnazione dei team non si annulla).
 
 ### 2d. Acquisto siti dai clienti (preventivo → contratto → pagamento)
 Pagina pubblica **Acquista il tuo sito** (`/sito-su-misura`): il cliente descrive il sito, ricevi la richiesta in **Area riservata → Preventivi**, rispondi con prezzo/acconto/giorni di consegna e il cliente, dal suo link privato (`/ordine/<codice>`), legge il contratto, firma con nome e cognome, paga con **Stripe** e riceve il contratto compilato (sulla pagina e via email).
@@ -68,7 +67,7 @@ Il pagamento usa **Stripe**: nessun canone mensile, solo commissione sulle vendi
    **Notifiche a te** (richiesta ricevuta + preventivo accettato + pagamento ricevuto): esegui [`supabase/notifiche_email.sql`](supabase/notifiche_email.sql), poi  
    `npx supabase functions deploy notifica-richiesta --no-verify-jwt` e ripubblica `crea-checkout` e `stripe-webhook`. Le email usano il modello grafico di `supabase/functions/_shared/email.ts` (logo `public/logo-compatto.jpg`, servito da `SITE_URL`). `MAIL_REPLY_TO` è facoltativo (di default le risposte vanno ad `ADMIN_EMAIL`; nelle notifiche a te, rispondere scrive al cliente).
    **Incassi e progetto automatico**: esegui anche [`supabase/incassi.sql`](supabase/incassi.sql) (dopo `ordini.sql`). Quando un cliente paga, il sito entra da solo tra i **Progetti** «in lavorazione» con il prezzo pieno e, come *incassato*, solo l'acconto realmente pagato. Il Riepilogo (solo admin) separa **guadagni già fatti** (siti consegnati), **in preparazione** (siti da fare), **già incassato** e **ancora da incassare**; il campo «Già incassato» si aggiorna dal form del progetto.
-   **Listino prezzi (solo area riservata)**: esegui [`supabase/prezzi_abbonamenti.sql`](supabase/prezzi_abbonamenti.sql) (dopo `soci.sql`). Il listino Siti web / Servizi / Abbonamenti lo vedono **solo** collaboratori, soci e admin, da *Area riservata → Prezzi*: non c'è nessuna pagina pubblica né pulsante nella home (`/prezzi` porta al login). Se avevi eseguito la vecchia versione «pubblica», questo script toglie l'accesso ai visitatori.
+   **Listino prezzi (solo area riservata)**: esegui [`supabase/prezzi_abbonamenti.sql`](supabase/prezzi_abbonamenti.sql) (dopo `soci.sql`). Il listino Siti web / Servizi / Abbonamenti lo vedono **solo** collaboratori e admin, da *Area riservata → Prezzi*: non c'è nessuna pagina pubblica né pulsante nella home (`/prezzi` porta al login). Se avevi eseguito la vecchia versione «pubblica», questo script toglie l'accesso ai visitatori.
    **Configuratore «Acquista il tuo sito»** (`/sito-su-misura`, anche `/acquista-sito-su-misura`): modulo a 5 passaggi (dati → sito → personalizzazione → preventivo → conferma) con preventivo indicativo in tempo reale.
    - Esegui [`supabase/configuratore.sql`](supabase/configuratore.sql) **prima** di pubblicare il nuovo sito, **dopo** `ordini.sql`, `incassi.sql` e `prezzi_abbonamenti.sql`, e **non rieseguire `ordini.sql` / `incassi.sql` dopo** (ripristinerebbero le vecchie funzioni). Lo script si può rieseguire (anche se l'avevi già eseguito prima della «Prova un mese»): i prezzi che hai già modificato non vengono toccati.
    - Ripubblica la funzione di pagamento: `npx supabase functions deploy crea-checkout`.
@@ -130,12 +129,7 @@ Non devi impostare nessun secret: `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` s
 
 In alternativa, dalla dashboard: **Edge Functions → Deploy a new function → Via Editor**. Chiamala `crea-collaboratore` e incolla il contenuto di `supabase/functions/crea-collaboratore/index.ts`.
 
-### 6. Crea il collaboratore di prova "Diego"
-1. Avvia il sito (passo 7), accedi come admin e vai su **Collaboratori → Nuovo account**. Inserisci nome `Diego`, la sua email e 30 come % predefinita. Diego riceve un'email per scegliere la password.
-   In alternativa crealo a mano in **Authentication → Users → Add user**.
-2. Apri `supabase/seed.sql`, sostituisci `diego@example.com` con l'email di Diego e riesegui lo script. Diego viene assegnato ai due progetti, con il 30% e il 25%, e viene registrato un acconto di esempio di 200 €.
-
-### 7. Avvia il sito in locale
+### 6. Avvia il sito in locale
 ```bash
 cp .env.example .env.local
 # inserisci in .env.local i valori presi da Project Settings → API:
@@ -146,7 +140,7 @@ npm run dev           # http://localhost:5173
 ```
 ⚠️ Usa **solo** la chiave `anon` (publishable). La `service_role` non va mai messa nel file `.env` del frontend.
 
-### 8. Deploy su Vercel
+### 7. Deploy su Vercel
 1. Carica il progetto su GitHub (è già un repository).
 2. Su <https://vercel.com> scegli **Add New → Project** e importa il repository. Vercel riconosce Vite in automatico: build command `npm run build`, output `dist`.
 3. In **Environment Variables** aggiungi `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
@@ -154,6 +148,13 @@ npm run dev           # http://localhost:5173
 5. Collega il tuo dominio in **Settings → Domains** e aggiorna **Site URL** e **Redirect URLs** su Supabase (passo 3).
 
 ---
+
+## Modulo «Scrivici» (contatti)
+In fondo alla home c'è il modulo per scrivere a Forma Web. Il messaggio viene salvato nella tabella `richieste_contatto` (già creata da `schema.sql`) e spedito a **formawebshop@gmail.com**; rispondendo alla mail si scrive al cliente. Serve Resend (punto 6 di «Acquista il tuo sito») e la funzione va pubblicata una volta:
+```bash
+npx supabase functions deploy contatto --no-verify-jwt
+```
+Per cambiare destinatario: `npx supabase secrets set CONTACT_EMAIL=...` (e aggiorna `CONTATTI.email` in `src/config.ts`). Se l'invio non riesce, il sito propone al cliente di scrivere direttamente a quell'indirizzo.
 
 ## Personalizzazione
 - **Testi di home, servizi, domande e contatti**: `src/config.ts`. I contatti compaiono solo se compilati.

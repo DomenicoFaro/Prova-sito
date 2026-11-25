@@ -10,12 +10,13 @@ export const SITO = {
 }
 
 /**
- * Contatti pubblici. Finché sono vuoti il sito non mostra nessun contatto.
+ * Contatti pubblici. Quelli lasciati vuoti non vengono mostrati.
  * whatsapp: numero con prefisso, senza "+" né spazi (es. 393331234567).
  */
 export const CONTATTI = {
   whatsapp: '',
-  email: '',
+  // Qui arrivano anche i messaggi del modulo «Scrivici» (vedi supabase/functions/contatto)
+  email: 'formawebshop@gmail.com',
 }
 
 export const SERVIZI: {

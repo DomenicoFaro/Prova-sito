@@ -8,7 +8,7 @@ const browser = await puppeteer.launch({ executablePath: EDGE, headless: true, a
 const jwt = (o) => 'x.' + Buffer.from(JSON.stringify(o)).toString('base64url') + '.y'
 const sessione = (id) => ({ access_token: jwt({ sub: id, exp: 4102444800, role: 'authenticated' }), token_type: 'bearer', expires_in: 3600, expires_at: 4102444800, refresh_token: 'r', user: { id, aud: 'authenticated', role: 'authenticated', email: 'u@x.it', app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' } })
 const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*', 'access-control-expose-headers': '*' }
-const progetto = { id: 'p1', nome: 'Café Sauvage', cliente: 'Cafè', url: null, categoria: 'Ristorazione', descrizione: 'd', funzionalita: [], tecnologie: [], screenshot_url: null, galleria: [], prezzo_totale: 1000, incassato: 300, ordine_id: null, data_consegna: null, stato: 'in_lavorazione', pubblico: true, gestore_id: null, created_at: '2026-01-01' }
+const progetto = { id: 'p1', nome: 'Café Sauvage', cliente: 'Cafè', url: null, categoria: 'Ristorazione', descrizione: 'd', funzionalita: [], tecnologie: [], screenshot_url: null, galleria: [], prezzo_totale: 1000, incassato: 300, ordine_id: null, data_consegna: null, stato: 'in_lavorazione', pubblico: true, created_at: '2026-01-01' }
 const dati = {
   progetti: [progetto], portfolio: [progetto], v_guadagni: [], assegnazioni: [], pagamenti: [], vendite: [], opportunita: [], richieste_contatto: [], ordini_siti: [],
   prezzi: [{ id: '1', tipo: 'sito', nome: 'Vetrina', descrizione: '', prezzo: 300, prezzo_max: null, valuta: '€', a_partire_da: false, periodicita: '', caratteristiche: [], in_evidenza: false, ordine: 0, attivo: true }],
@@ -27,8 +27,7 @@ async function pagina(ruolo, id) {
     if (req.method() === 'OPTIONS') return req.respond({ status: 204, headers: CORS })
     const tab = url.pathname.split('/').pop()
     const singolo = (req.headers().accept ?? '').includes('pgrst.object')
-    if (tab === 'profiles') { const p = { id, nome: 'Utente', email: 'u@x.it', avatar_url: null, ruolo, percentuale_default: 20, attivo: true, responsabile_id: null, created_at: '2026-01-01' }; return r(singolo ? p : [p]) }
-    if (tab === 'riepilogo_azienda') return r([])
+    if (tab === 'profiles') { const p = { id, nome: 'Utente', email: 'u@x.it', avatar_url: null, ruolo, percentuale_default: 20, attivo: true, created_at: '2026-01-01' }; return r(singolo ? p : [p]) }
     if (tab === 'leggi_ordine') return r(null)
     if (req.method() !== 'GET') return req.respond({ status: 201, headers: CORS })
     return r(dati[tab] ?? [])

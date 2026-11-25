@@ -6,6 +6,7 @@ import { Finestra, Telefono } from '../../components/Mockup'
 import { ProjectCard, ProjectCardScheletro } from '../../components/ProjectCard'
 import { Reveal } from '../../components/Reveal'
 import { Seo } from '../../components/Seo'
+import { ModuloContatto } from '../../components/ModuloContatto'
 import { MessaggioErrore } from '../../components/ui'
 import { dominio, useLavori, type Lavoro } from '../../data/lavori'
 
@@ -61,7 +62,7 @@ export default function Home() {
       <Funzioni />
       <Metodo />
       <Domande />
-      <Chiusura />
+      <Contatti />
     </>
   )
 }
@@ -274,34 +275,41 @@ function Domande() {
   )
 }
 
-/** Invito finale. I contatti compaiono solo se sono compilati in config.ts. */
-function Chiusura() {
+/** Invito finale con il modulo per scriverci. WhatsApp ed email compaiono se compilati in config.ts. */
+function Contatti() {
   const { whatsapp, email } = CONTATTI
   return (
-    <section className="pb-24 sm:pb-32">
+    <section id="contatti" className="scroll-mt-20 pb-24 sm:pb-32">
       <div className="container-sito">
         <Reveal>
-          <div className="rounded-[2rem] bg-lime-accento px-6 py-16 text-center sm:rounded-[3rem] sm:px-12 sm:py-24">
-            <h2 className="mx-auto max-w-3xl text-4xl leading-[1.05] font-extrabold tracking-tight text-balance text-brand-950 sm:text-6xl">
-              Il prossimo sito può essere il tuo.
-            </h2>
-            <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
-              <Link to="/sito-su-misura" className="btn-primary btn-grande">
-                Acquista il tuo sito <Icon name="arrowRight" className="h-4 w-4" />
-              </Link>
-              <Link to="/prova-un-mese" className="btn-secondary btn-grande">
-                <Icon name="clock" className="h-4 w-4" /> Prova il tuo sito
-              </Link>
-              {whatsapp && (
-                <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-grande">
-                  <Icon name="chat" className="h-5 w-5" /> Scrivici su WhatsApp
-                </a>
-              )}
+          <div className="grid items-center gap-12 rounded-[2rem] bg-lime-accento px-4 py-10 text-brand-950 sm:rounded-[3rem] sm:px-12 sm:py-16 lg:grid-cols-2 lg:gap-16 lg:px-16">
+            <div className="px-2 text-center sm:px-0 lg:text-left">
+              <p className="text-sm font-semibold tracking-wide text-brand-800">Contatti</p>
+              <h2 className="mt-3 text-4xl leading-[1.05] font-extrabold tracking-tight text-balance sm:text-5xl">Il prossimo sito può essere il tuo.</h2>
+              <p className="mx-auto mt-5 max-w-md text-lg leading-relaxed text-brand-900 lg:mx-0">
+                Hai una domanda o un’idea? Raccontaci cosa ti serve: ti rispondiamo via email.
+              </p>
               {email && (
-                <a href={`mailto:${email}`} className="btn-secondary btn-grande">
-                  <Icon name="mail" className="h-5 w-5" /> Scrivici una email
+                <a href={`mailto:${email}`} className="mt-6 inline-flex items-center gap-2.5 font-semibold break-all underline-offset-4 hover:underline">
+                  <Icon name="mail" className="h-5 w-5 shrink-0" /> {email}
                 </a>
               )}
+              <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap lg:justify-start">
+                <Link to="/sito-su-misura" className="btn-primary btn-grande">
+                  Acquista il tuo sito <Icon name="arrowRight" className="h-4 w-4" />
+                </Link>
+                <Link to="/prova-un-mese" className="btn-secondary btn-grande">
+                  <Icon name="clock" className="h-4 w-4" /> Prova il tuo sito
+                </Link>
+                {whatsapp && (
+                  <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-grande">
+                    <Icon name="chat" className="h-5 w-5" /> Scrivici su WhatsApp
+                  </a>
+                )}
+              </div>
+            </div>
+            <div className="rounded-3xl bg-white p-6 text-slate-800 shadow-2xl shadow-brand-950/30 sm:p-8">
+              <ModuloContatto />
             </div>
           </div>
         </Reveal>

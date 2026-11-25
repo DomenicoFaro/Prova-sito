@@ -34,7 +34,7 @@ function tempoRimasto(scadenza: string, adesso: number): string {
 const FORM_VUOTO: FormLink = { nome: '', maps_url: '', categoria: '', indirizzo: '', dettagli: '' }
 
 export default function Opportunita() {
-  const { profilo, isGestore, isSocio } = useAuth()
+  const { profilo, isAdmin } = useAuth()
   const [params, setParams] = useSearchParams()
   const sezione = params.get('sezione')
   const [inCorso, setInCorso] = useState<string | null>(null)
@@ -47,15 +47,15 @@ export default function Opportunita() {
   const [daEliminare, setDaEliminare] = useState<OpportunitaRiga | null>(null)
 
   const { dati, caricamento, errore: erroreCaricamento, ricarica } = useQuery(async () => {
-    // Gli esiti li limita il database: un collaboratore vede i propri, il socio anche quelli del suo team
+    // Gli esiti li limita il database: un collaboratore vede solo i propri, l'admin tutti
     const [opportunita, esiti, prese, persone] = await Promise.all([
       esegui<OpportunitaRiga[]>(supabase.from('opportunita').select('*').order('created_at', { ascending: false })),
       esegui<EsitoOpportunitaRiga[]>(supabase.from('opportunita_esiti').select('*')),
       esegui<OpportunitaPresa[]>(supabase.from('opportunita_prese').select('*').eq('collaboratore_id', profilo?.id ?? '')),
-      isGestore ? esegui<Profilo[]>(supabase.from('profiles').select('*')) : Promise.resolve<Profilo[]>([]),
+      isAdmin ? esegui<Profilo[]>(supabase.from('profiles').select('*')) : Promise.resolve<Profilo[]>([]),
     ])
     return { opportunita, esiti, prese, persone: new Map(persone.map((p) => [p.id, p])) }
-  }, [profilo?.id, isGestore])
+  }, [profilo?.id, isAdmin])
 
   // Orologio: aggiorna il conto alla rovescia e allo scadere ricarica la lista
   const [adesso, setAdesso] = useState(() => Date.now())
@@ -71,13 +71,13 @@ export default function Opportunita() {
     [dati, profilo?.id],
   )
 
-  /** Esito dei link caricati dai collaboratori del team (visibili al socio). */
-  const esitiTeam = useMemo(() => new Map((dati?.esiti ?? []).map((e) => [`${e.opportunita_id}:${e.collaboratore_id}`, e.esito])), [dati])
+  /** Esito dei link caricati dagli altri (visibili all'admin). */
+  const esitiAltrui = useMemo(() => new Map((dati?.esiti ?? []).map((e) => [`${e.opportunita_id}:${e.collaboratore_id}`, e.esito])), [dati])
 
   const rifiutate = useMemo(() => idRifiutate(dati?.opportunita ?? [], dati?.esiti ?? [], profilo?.id ?? ''), [dati, profilo?.id])
   const sezioni = useMemo(
-    () => costruisciSezioni(dati?.opportunita ?? [], { meId: profilo?.id ?? '', mie: true, persone: isGestore ? (dati?.persone ?? null) : null, rifiutate }),
-    [dati, profilo?.id, isGestore, rifiutate],
+    () => costruisciSezioni(dati?.opportunita ?? [], { meId: profilo?.id ?? '', mie: true, persone: isAdmin ? (dati?.persone ?? null) : null, rifiutate }),
+    [dati, profilo?.id, isAdmin, rifiutate],
   )
   const sezioneCorrente = sezioni.find((x) => x.chiave === sezione) ?? null
   const visibili = useMemo(
@@ -150,9 +150,7 @@ export default function Opportunita() {
       ? await supabase.from('opportunita').update(valori).eq('id', inModifica.id)
       : await supabase
           .from('opportunita')
-          // Il socio aggiunge posti per il proprio team (compaiono nelle categorie dei suoi collaboratori);
-          // un collaboratore aggiunge link propri.
-          .insert(isSocio ? { ...valori, owner_id: null, team_id: profilo.id } : { ...valori, owner_id: profilo.id })
+          .insert({ ...valori, owner_id: profilo.id })
     setSalvataggio(false)
     if (error) return setErroreForm(messaggioErrore(error))
     setModale(false)
@@ -188,13 +186,13 @@ export default function Opportunita() {
       <IntestazionePagina
         titolo="Opportunità"
         sottotitolo={
-          isGestore
-            ? "Le categorie con i posti che hai aggiunto al tuo team, e una cartella per ogni collaboratore con i link che ha caricato lui. In «Le mie opportunità» trovi quelle caricate da te."
+          isAdmin
+            ? "Le categorie con le opportunità condivise, e una cartella per ogni collaboratore con i link che ha caricato lui. In «Le mie opportunità» trovi quelle caricate da te."
             : "Scegli una categoria, aprile su Google Maps e segna com'è andata. Prendi in carico un'opportunità alla volta: hai 12 ore per rispondere, poi torna disponibile per gli altri. I link che aggiungi tu li trovi in «Le mie opportunità»."
         }
         azioni={
           <button className="btn-primary" onClick={() => apri()}>
-            <Icon name="plus" className="h-4 w-4" /> {isSocio ? 'Aggiungi al team' : 'Aggiungi link'}
+            <Icon name="plus" className="h-4 w-4" /> Aggiungi link
           </button>
         }
       />
@@ -226,11 +224,9 @@ export default function Opportunita() {
           <ul className="grid gap-4 lg:grid-cols-2">
             {visibili.map((o) => {
               const mio = o.owner_id === profilo?.id
-              // Il socio modifica i posti condivisi con il suo team; il collaboratore solo i propri link
-              const modificabile = mio || (isSocio && !o.owner_id && o.team_id === profilo?.id)
-              const esitiCollab = isGestore && !o.owner_id ? (dati?.esiti ?? []).filter((e) => e.opportunita_id === o.id) : []
-              const delTeam = !!o.owner_id && !mio
-              const esitoTeam = delTeam ? (esitiTeam.get(`${o.id}:${o.owner_id}`) ?? null) : null
+              const esitiCollab = isAdmin && !o.owner_id ? (dati?.esiti ?? []).filter((e) => e.opportunita_id === o.id) : []
+              const diAltri = !!o.owner_id && !mio
+              const esitoAltrui = diAltri ? (esitiAltrui.get(`${o.id}:${o.owner_id}`) ?? null) : null
               const esito = esiti.get(o.id) ?? null
               const occupato = inCorso === o.id
               const presa = prese.get(o.id)
@@ -247,9 +243,9 @@ export default function Opportunita() {
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      {modificabile && (
+                      {mio && (
                         <>
-                          <span className="mr-1 text-xs font-semibold text-brand-700">{mio ? 'Tuo' : 'Del team'}</span>
+                          <span className="mr-1 text-xs font-semibold text-brand-700">Tuo</span>
                           <button className="btn-ghost p-2" onClick={() => apri(o)} aria-label="Modifica link">
                             <Icon name="edit" className="h-4 w-4" />
                           </button>
@@ -258,10 +254,10 @@ export default function Opportunita() {
                           </button>
                         </>
                       )}
-                      {delTeam ? (
+                      {diAltri ? (
                         <>
                           <span className="mr-1 truncate text-xs font-semibold text-brand-700">{dati?.persone.get(o.owner_id!)?.nome ?? 'Collaboratore'}</span>
-                          <BadgeEsitoOpportunita esito={esitoTeam} />
+                          <BadgeEsitoOpportunita esito={esitoAltrui} />
                         </>
                       ) : scaduta ? (
                         <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">Scaduta</span>
@@ -279,7 +275,7 @@ export default function Opportunita() {
                     <a href={o.maps_url} target="_blank" rel="noopener noreferrer" className="btn-secondary py-1.5">
                       <Icon name="pin" className="h-4 w-4" /> Google Maps
                     </a>
-                    {!o.owner_id && !presa && !isGestore && (
+                    {!o.owner_id && !presa && !isAdmin && (
                       <button
                         className="btn-primary py-1.5"
                         disabled={occupato || !!inCaricoOra}
@@ -335,7 +331,7 @@ export default function Opportunita() {
         </div>
       )}
 
-      <Modale aperta={modale} titolo={inModifica ? 'Modifica' : isSocio ? 'Aggiungi un posto al tuo team' : 'Aggiungi un tuo link'} onChiudi={() => setModale(false)}>
+      <Modale aperta={modale} titolo={inModifica ? 'Modifica' : 'Aggiungi un tuo link'} onChiudi={() => setModale(false)}>
         <form onSubmit={salva} className="space-y-4">
           {erroreForm && <MessaggioErrore>{erroreForm}</MessaggioErrore>}
           <div>
@@ -364,9 +360,7 @@ export default function Opportunita() {
             <textarea id="cd" rows={4} className="input" value={form.dettagli} onChange={(e) => setForm((f) => ({ ...f, dettagli: e.target.value }))} />
           </div>
           <p className="text-xs text-slate-500">
-            {isSocio
-              ? 'Lo vedranno tutti i collaboratori del tuo team, nella categoria che scegli.'
-              : 'Questo link lo vedi solo tu (e chi gestisce il tuo team).'}
+            Questo link lo vedi solo tu e l’amministratore.
           </p>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" className="btn-secondary" onClick={() => setModale(false)}>Annulla</button>

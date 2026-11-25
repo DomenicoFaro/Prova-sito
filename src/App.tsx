@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthProvider'
-import { RedirectRuolo, RichiedeGestore, RichiedeLogin } from './auth/guards'
+import { RedirectRuolo, RichiedeAdmin, RichiedeLogin } from './auth/guards'
 import { AreaLayout } from './components/AreaLayout'
 import { PublicLayout } from './components/PublicLayout'
 import { Caricamento } from './components/ui'
@@ -70,7 +70,7 @@ export default function App() {
                 <Route path="prezzi" element={<Prezzi />} />
                 <Route path="profilo" element={<Profilo />} />
 
-                <Route path="admin" element={<RichiedeGestore />}>
+                <Route path="admin" element={<RichiedeAdmin />}>
                   <Route index element={<AdminRiepilogo />} />
                   <Route path="progetti" element={<AdminProgetti />} />
                   <Route path="progetti/nuovo" element={<AdminProgettoForm />} />
