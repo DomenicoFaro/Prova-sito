@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode 
 import { Link, useNavigate } from 'react-router-dom'
 import { Icon } from '../../components/Icon'
 import { Seo } from '../../components/Seo'
-import { PannelloProva } from '../../components/RiepilogoPreventivo'
+import { finoAl } from '../../components/Offerte'
+import { PannelloProva, RigaOfferta } from '../../components/RiepilogoPreventivo'
 import { Caricamento, MessaggioErrore, Spinner } from '../../components/ui'
 import {
   AVVISO_PREVENTIVO_PREDEFINITO,
@@ -13,10 +14,14 @@ import {
   caricaConfiguratore,
   calcolaPreventivo,
   CODICE_PAGINA_AGGIUNTIVA,
+  circa,
   erroreAllegato,
+  euroBreve,
   FASCE_BUDGET,
   impostazioniProva,
-  formatPrezzoVoce,
+  formatStima,
+  offerteAttive,
+  vociConStima,
   leggiBozza,
   MAX_ALLEGATI,
   MAX_PAGINE,
@@ -46,10 +51,9 @@ function Campo({ etichetta, children, nota }: { etichetta: string; children: Rea
   )
 }
 
-/** Prezzo di una funzionalità extra: "+ 39 €" oppure "da 199 €" (quando va confermato). */
+/** Prezzo di una funzionalità extra: "+ circa 35 €" oppure "da circa 179 €" (quando va confermato). */
 function prezzoExtra(v: VoceConfiguratore) {
-  if (v.modalita === 'preventivo' || v.prezzo == null) return 'Su preventivo'
-  return v.modalita === 'da' ? formatPrezzoVoce(v) : formatPrezzoVoce(v, '+ ')
+  return v.modalita === 'da' ? formatStima(v) : formatStima(v, '+ ')
 }
 
 function Indicatore({ passo, onVai }: { passo: number; onVai: (p: number) => void }) {
@@ -115,15 +119,23 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
 
   const set = (patch: Partial<Bozza>) => setB((x) => ({ ...x, ...patch }))
 
+  // Prezzi da mostrare (il calcolo parte invece dal listino, in dati.voci)
+  const mostrate = useMemo(() => (dati ? vociConStima(dati.voci, dati.impostazioni) : []), [dati])
+  const offerte = dati ? offerteAttive(dati.impostazioni) : null
+  const sconto = prova ? null : (offerte?.acquisto ?? null)
+  const annuncio = prova
+    ? offerte?.prova && `Offerta valida ${finoAl(offerte.prova.scadenza)}`
+    : sconto && `−${sconto.percentuale}% sul tuo sito ${finoAl(sconto.scadenza)}`
+
   // Nella prova si vedono solo le voci che l'admin ha lasciato disponibili (colonna in_prova)
-  const tipologie = useMemo(() => (dati?.voci ?? []).filter((v) => v.gruppo === 'tipologia' && (!prova || v.in_prova)), [dati, prova])
+  const tipologie = useMemo(() => mostrate.filter((v) => v.gruppo === 'tipologia' && (!prova || v.in_prova)), [mostrate, prova])
   const extra = useMemo(
-    () => (dati?.voci ?? []).filter((v) => v.gruppo === 'extra' && v.codice !== CODICE_PAGINA_AGGIUNTIVA && (!prova || v.in_prova)),
-    [dati, prova],
+    () => mostrate.filter((v) => v.gruppo === 'extra' && v.codice !== CODICE_PAGINA_AGGIUNTIVA && (!prova || v.in_prova)),
+    [mostrate, prova],
   )
-  const servizi = useMemo(() => (dati?.voci ?? []).filter((v) => v.gruppo === 'servizio_esterno'), [dati])
+  const servizi = useMemo(() => mostrate.filter((v) => v.gruppo === 'servizio_esterno'), [mostrate])
   const tipologia = tipologie.find((t) => t.codice === b.tipologia) ?? null
-  const prezzoPagina = dati?.voci.find((v) => v.codice === CODICE_PAGINA_AGGIUNTIVA)?.prezzo ?? null
+  const prezzoPagina = mostrate.find((v) => v.codice === CODICE_PAGINA_AGGIUNTIVA)?.prezzo ?? null
 
   const extraValidi = useMemo(() => {
     const ammessi = new Set(extra.map((v) => v.codice))
@@ -259,19 +271,19 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
   return (
     <>
       <Seo
-        titolo={prova ? 'Prova il tuo sito' : 'Acquista il tuo sito'}
+        titolo={prova ? 'Prova il tuo sito' : 'Crea il tuo preventivo'}
         descrizione={
           prova
             ? 'Prova il tuo sito per un mese su formaweb.shop: scegli il sito su misura, ricevi il preventivo e parti dalla prova.'
-            : 'Acquista il tuo sito web su misura su formaweb.shop: configura il sito, ricevi il preventivo, firma il contratto e paga online.'
+            : 'Crea il preventivo del tuo sito web su formaweb.shop: scegli cosa ti serve e vedi subito il prezzo indicativo.'
         }
       />
       <section className="bg-brand-950 pt-12 pb-14 text-center text-white">
         <div className="container-sito">
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{prova ? 'Prova il tuo sito per un mese' : 'Il tuo sito, su misura'}</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{prova ? 'Prova il tuo sito per un mese' : 'Crea il tuo preventivo'}</h1>
           {prova && dati ? (
             <p className="mx-auto mt-3 max-w-xl text-slate-300">
-              Prova il tuo sito per un mese a <strong className="text-white">{formatEuro(impostazioniProva(dati.impostazioni).prezzo).replace(/,00(?=\s)/, '')}</strong>,
+              Prova il tuo sito per un mese a <strong className="text-white">{euroBreve(impostazioniProva(dati.impostazioni).prezzo)}</strong>,
               con le funzionalità aggiuntive <strong className="text-white">scontate del {impostazioniProva(dati.impostazioni).sconto}%</strong>. Se alla fine
               del mese ti piace, paghi il resto; se no, non devi altro.
             </p>
@@ -279,10 +291,11 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
             <p className="mx-auto mt-3 max-w-xl text-slate-300">Prova il tuo sito per un mese a prezzo ridotto: se alla fine ti piace, paghi il resto.</p>
           ) : (
             <p className="mx-auto mt-3 max-w-xl text-slate-300">
-              Scegli il tipo di sito e le funzioni che ti servono: vedi subito un preventivo indicativo. FormaWeb lo conferma, poi leggi il
-              contratto, accetti e paghi online.
+              Scegli il tipo di sito e le funzioni che ti servono: vedi subito un prezzo indicativo. FormaWeb conferma quello finale, poi
+              leggi il contratto, accetti e paghi online.
             </p>
           )}
+          {annuncio && <p className="mt-5 inline-block rounded-full bg-lime-accento px-4 py-1.5 text-sm font-bold text-brand-950">{annuncio}</p>}
         </div>
       </section>
 
@@ -363,7 +376,18 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
                               <span className="font-semibold text-slate-900">{t.nome}</span>
                               {scelto && <Icon name="check" className="h-5 w-5 shrink-0 text-brand-600" />}
                             </span>
-                            <span className="text-lg font-extrabold text-slate-900 tabular-nums">{formatPrezzoVoce(t)}</span>
+                            {sconto && t.modalita !== 'preventivo' && t.prezzo != null ? (
+                              <span className="flex flex-wrap items-baseline gap-x-2 tabular-nums">
+                                <span className="text-lg font-extrabold text-slate-900">
+                                  {t.modalita === 'da' ? 'da ' : ''}
+                                  {circa((t.prezzo * (100 - sconto.percentuale)) / 100)}
+                                </span>
+                                <s className="text-sm text-slate-400">{euroBreve(t.prezzo)}</s>
+                                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">−{sconto.percentuale}%</span>
+                              </span>
+                            ) : (
+                              <span className="text-lg font-extrabold text-slate-900 tabular-nums">{formatStima(t)}</span>
+                            )}
                             <span className="text-sm text-slate-600">{t.descrizione}</span>
                             {t.modalita !== 'preventivo' && t.pagine_incluse > 0 && (
                               <span className="text-xs text-slate-500">
@@ -388,7 +412,7 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
                         etichetta="Quante pagine?"
                         nota={
                           tipologia && tipologia.modalita !== 'preventivo'
-                            ? `${tipologia.pagine_incluse} incluse${prezzoPagina != null ? `, poi ${formatEuro(prezzoPagina).replace(/,00(?=\s)/, '')} per ogni pagina in più` : ''}.`
+                            ? `${tipologia.pagine_incluse} incluse${prezzoPagina != null ? `, poi circa ${euroBreve(prezzoPagina)} per ogni pagina in più` : ''}.`
                             : undefined
                         }
                       >
@@ -437,6 +461,7 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
                     <p className="text-sm text-slate-500">
                       Scegli quelle che ti servono: il totale si aggiorna subito. Quelle già comprese nel tuo sito non si pagano due volte.
                       {prova && dati && <> Nella prova hanno lo <strong>sconto del {impostazioniProva(dati.impostazioni).sconto}%</strong>.</>}
+                      {sconto && <> Lo <strong>sconto del {sconto.percentuale}%</strong> si applica al totale.</>}
                     </p>
                     <div className="grid gap-3 sm:grid-cols-2">
                       {extra.map((v) => {
@@ -516,7 +541,7 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
                             <span className="font-semibold text-slate-900">{o.titolo}</span>
                             <span className="block text-xs text-slate-600">
                               {o.valore === 'urgente' && preventivo
-                                ? `Supplemento indicativo del ${preventivo.urgenza_percentuale}% (circa ${formatEuro(preventivo.urgenza_importo)}), solo previa conferma di FormaWeb.`
+                                ? `Supplemento indicativo del ${preventivo.urgenza_percentuale}% (${circa(preventivo.urgenza_importo)}), solo previa conferma di FormaWeb.`
                                 : o.nota}
                             </span>
                           </span>
@@ -569,13 +594,14 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
                 <>
                   <div className="card p-5 sm:p-6">
                     <h3 className="text-base font-bold text-slate-900">Riepilogo del preventivo</h3>
+                    <p className="mt-1 text-sm text-slate-500">I prezzi sono indicativi: quello finale lo conferma FormaWeb prima di qualsiasi pagamento.</p>
                     <dl className="mt-4 divide-y divide-slate-100 text-sm">
                       <div className="flex justify-between gap-4 py-2.5">
                         <dt className="text-slate-700">
                           <span className="font-semibold text-slate-900">{preventivo.tipologia.nome}</span>
                           <span className="block text-xs text-slate-500">Prezzo base{preventivo.tipologia.modalita === 'da' ? ' di partenza' : ''}</span>
                         </dt>
-                        <dd className="shrink-0 font-semibold tabular-nums">{preventivo.tipologia.modalita === 'preventivo' ? 'Su preventivo' : formatPrezzoVoce({ prezzo: preventivo.tipologia.prezzo, modalita: preventivo.tipologia.modalita })}</dd>
+                        <dd className="shrink-0 font-semibold tabular-nums">{formatStima(preventivo.tipologia)}</dd>
                       </div>
                       <div className="flex justify-between gap-4 py-2.5">
                         <dt className="text-slate-700">
@@ -604,6 +630,7 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
                         <dt className="font-semibold text-slate-900">{prova ? 'Prezzo pieno del sito' : 'Subtotale realizzazione'}</dt>
                         <dd className="font-semibold tabular-nums">{formatEuro(preventivo.subtotale)}</dd>
                       </div>
+                      {preventivo.offerta && <RigaOfferta offerta={preventivo.offerta} />}
                       {urgente && (
                         <div className="flex justify-between gap-4 py-2.5">
                           <dt className="text-slate-700">
@@ -622,10 +649,10 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
                       </div>
                     ) : (
                       <div className="mt-3 flex items-baseline justify-between gap-4 rounded-xl bg-slate-900 px-4 py-3 text-white">
-                        <span className="font-semibold">Totale indicativo{suffisso}</span>
+                        <span className="font-semibold">Prezzo indicativo{suffisso}</span>
                         <span className="text-2xl font-extrabold tabular-nums" aria-live="polite">
                           {preventivo.approvazione_manuale ? 'da ' : ''}
-                          {formatEuro(preventivo.totale)}
+                          {circa(preventivo.totale)}
                         </span>
                       </div>
                     )}
@@ -695,12 +722,17 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
                       <PannelloProva prova={preventivo.prova} parziale={preventivo.approvazione_manuale} />
                     ) : (
                       <div className="flex items-baseline justify-between gap-4 rounded-xl bg-slate-900 px-4 py-3 text-white">
-                        <span className="font-semibold">Totale indicativo{suffisso}</span>
+                        <span className="font-semibold">Prezzo indicativo{suffisso}</span>
                         <span className="text-xl font-extrabold tabular-nums">
                           {preventivo.approvazione_manuale ? 'da ' : ''}
-                          {formatEuro(preventivo.totale)}
+                          {circa(preventivo.totale)}
                         </span>
                       </div>
+                    )}
+                    {preventivo.offerta && (
+                      <p className="text-sm font-medium text-emerald-700">
+                        Compreso lo sconto del {preventivo.offerta.percentuale}%, per le richieste inviate {finoAl(preventivo.offerta.scadenza)}.
+                      </p>
                     )}
                     <p className="text-xs text-slate-500">{avvisoPreventivo}</p>
                   </div>
@@ -759,15 +791,20 @@ export default function SitoSuMisura({ modo = 'standard' }: { modo?: ModoOrdine 
               <p className="truncate text-xs text-slate-500">{preventivo.tipologia.nome} · {preventivo.pagine} {preventivo.pagine === 1 ? 'pagina' : 'pagine'}</p>
               <p className="text-xs text-slate-500">
                 {prova && preventivo.prova
-                  ? `Da pagare ora · poi ${formatEuro(preventivo.prova.resto_dopo)} dopo il mese`
-                  : preventivo.approvazione_manuale
-                    ? 'Totale indicativo parziale'
-                    : 'Totale indicativo'}
+                  ? `Da pagare ora · poi ${circa(preventivo.prova.resto_dopo)} dopo il mese`
+                  : `Prezzo indicativo${preventivo.approvazione_manuale ? ' parziale' : ''}${preventivo.offerta ? ` · sconto ${preventivo.offerta.percentuale}%` : ''}`}
               </p>
             </div>
-            <p className="text-xl font-extrabold text-slate-900 tabular-nums">
-              {preventivo.approvazione_manuale ? 'da ' : ''}
-              {formatEuro(prova && preventivo.prova ? preventivo.prova.da_pagare_ora : preventivo.totale)}
+            <p className="flex shrink-0 items-baseline gap-2 tabular-nums">
+              {preventivo.offerta && <s className="text-sm text-slate-400">{euroBreve(preventivo.subtotale)}</s>}
+              <span className="text-xl font-extrabold text-slate-900">
+                {preventivo.approvazione_manuale ? 'da ' : ''}
+                {prova && preventivo.prova
+                  ? preventivo.prova.extra_pieno > 0
+                    ? circa(preventivo.prova.da_pagare_ora)
+                    : formatEuro(preventivo.prova.da_pagare_ora)
+                  : circa(preventivo.totale)}
+              </span>
             </p>
           </div>
         </div>

@@ -128,10 +128,10 @@ const ultimaChiamata = (metodo, rotta) => [...chiamate].reverse().find((c) => c.
 
 console.log('Area admin: Preventivi e ordini')
 await page.goto(`${BASE}/area/admin/preventivi`, { waitUntil: 'networkidle0' })
-await prova('Si entra come admin e compaiono le tre schede', async () => {
+await prova('Si entra come admin e compaiono le quattro schede', async () => {
   const t = await testo()
   contiene(t, 'Preventivi e ordini')
-  for (const s of ['Ordini', 'Listino prezzi e servizi', 'Modello contratto']) contiene(t, s)
+  for (const s of ['Richieste', 'Offerte', 'Listino prezzi e servizi', 'Modello contratto']) contiene(t, s)
 })
 await prova('Elenco ordini da quotare', async () => {
   const t = await testo()
@@ -142,7 +142,7 @@ await prova('Ordine standard: mostra configurazione del cliente, riepilogo, alle
   await page.$$eval('tbody tr', (rr) => rr[0].querySelector('button').click())
   await attendi()
   const t = await testo()
-  for (const s of ['Configurazione scelta dal cliente', 'Ristorante / Bar', 'Lingua aggiuntiva × 2', 'Totale indicativo', 'Materiali caricati dal cliente', 'logo.png', 'menu.pdf',
+  for (const s of ['Configurazione scelta dal cliente', 'Ristorante / Bar', 'Lingua aggiuntiva × 2', 'Prezzo indicativo', 'Materiali caricati dal cliente', 'logo.png', 'menu.pdf',
     'Il cliente paga solo l\'importo che confermi nel Preventivo'])
     contiene(t, s)
   if (/Richiede approvazione manuale/.test(t)) throw new Error('un ordine standard non deve risultare da approvare a mano')
@@ -404,7 +404,7 @@ await prova('Ordine di prova: pannello della prova, prezzo pieno 734 e mese di p
   await page.evaluate(() => [...document.querySelectorAll('tbody tr')].find((r) => r.textContent.includes('Carla Gialli')).querySelector('button').click())
   await attendi()
   const t = await testo()
-  for (const s of ['Come funziona la prova di un mese', 'Da pagare ora', '200,50', '533,50', 'Prezzo pieno del sito: 734,00', 'Prova di un mese: prezzo pieno suggerito 734,00']) contiene(t, s)
+  for (const s of ['Come funziona la prova di un mese', 'Da pagare ora', '200,50', '533,50', 'Prezzo pieno del sito: circa 734', 'Prova di un mese: prezzo pieno suggerito 734,00']) contiene(t, s)
   eq(await valoreCampo('Prezzo pieno del sito'), '734')
   eq(await valoreCampo('Da pagare ora: mese di prova'), '200,5')
 })

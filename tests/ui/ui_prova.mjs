@@ -77,10 +77,10 @@ await prova('Pagina della prova: titolo, prezzo 100 € e sconto 70% presi dalle
   contiene(t, 'scontate del 70%')
   contiene(t, 'se no, non devi altro')
 })
-await prova('Il menu ha «Prova un mese» e NON ha «Prezzi»', async () => {
+await prova('Il menu ha «Prova il tuo sito» e NON ha «Prezzi»', async () => {
   const menu = await page.evaluate(() => document.querySelector('header nav')?.innerText ?? '')
-  contiene(menu, 'Prova un mese')
-  contiene(menu, 'Acquista il tuo sito')
+  contiene(menu, 'Crea il tuo preventivo')
+  contiene(await page.evaluate(() => document.querySelector('footer').innerText), 'Prova il tuo sito')
   nonContiene(menu, 'Prezzi')
 })
 await campo('Nome e cognome', 'Luca Verdi'); await campo('Email', 'luca@test.it'); await campo('Codice fiscale', 'VRDLCU80A01H501X'); await campo('Indirizzo', 'Via Po 3, Torino')
@@ -96,12 +96,12 @@ await prova('Si arriva al passo 2; solo le tipologie disponibili in prova (11 su
 await prova('Scelto il Ristorante: «da pagare ora» = 100 € (nessun extra ancora), poi 299 € dopo il mese', async () => {
   await cliccaTesto('label', 'Ristorante / Bar'); await attendi()
   const b = await barra()
-  contiene(b, '100,00'); contiene(b, 'Da pagare ora'); contiene(b, '299,00')
+  contiene(b, '100,00'); contiene(b, 'Da pagare ora'); contiene(b, 'circa 299')
 })
 await prova('6 pagine: +98 € aggiuntivi scontati del 70% → 100 + 29,40 = 129,40 €; resto 367,60 €', async () => {
   await scrive('input[aria-label="Numero di pagine"]', '6'); await attendi()
   const b = await barra()
-  contiene(b, '129,40'); contiene(b, '367,60')
+  contiene(b, 'circa 129'); contiene(b, 'circa 368')
 })
 await campo('Descrivi il sito', 'Sito per il mio ristorante in centro')
 await avanti()
@@ -114,13 +114,13 @@ await prova('Passo 3: Chatbot AI e Gestione ordini (esclusi dalla prova) NON si 
 })
 await prova('Modulo contatti (+39) → extra 137 → 100 + 41,10 = 141,10 €', async () => {
   await cliccaTesto('label', 'Modulo contatti'); await attendi()
-  contiene(await barra(), '141,10')
+  contiene(await barra(), 'circa 141')
 })
 await prova('2 lingue (+198) → extra 335 → 200,50 €; resto 533,50 €', async () => {
   await cliccaTesto('label', 'Lingua aggiuntiva'); await attendi()
   await page.$eval('button[aria-label="Una lingua aggiuntiva in più"]', (b) => b.click()); await attendi()
   const b = await barra()
-  contiene(b, '200,50'); contiene(b, '533,50')
+  contiene(b, 'circa 201'); contiene(b, 'circa 534')
 })
 await prova('La consegna urgente NON è offerta nella prova', async () => {
   const t = await testo()
@@ -132,7 +132,7 @@ await prova('Passo 4: pannello «Come funziona la prova di un mese» con tutti g
   eq(await titoloPasso(), '4. Preventivo')
   const t = await testo()
   for (const s of ['Come funziona la prova di un mese', 'Mese di prova', '100,00', 'Sconto del 70% per la prova: risparmi 234,50', '335,00', '100,50',
-    'Da pagare ora', '200,50', 'solo se il sito ti è piaciuto', '533,50', 'Prezzo pieno del sito: 734,00', 'Se alla fine del mese non ti convince, non paghi il resto.',
+    'Da pagare ora', 'circa 201', 'solo se il sito ti è piaciuto', 'circa 534', 'Prezzo pieno del sito: circa 734', 'Se alla fine del mese non ti convince, non paghi il resto.',
     'Preventivo indicativo, soggetto a conferma da parte di FormaWeb.', 'Servizi esterni e costi di gestione'])
     contiene(t, s)
 })
@@ -195,16 +195,16 @@ await prova('Pagato in contanti: messaggio diverso (nessuna email), contratto da
 console.log('\nSeparazione tra acquisto normale e prova')
 await page.evaluate(() => sessionStorage.clear())
 await prova('Le bozze dei due moduli sono separate', async () => {
-  await page.goto(`${BASE}/sito-su-misura`, { waitUntil: 'networkidle0' })
+  await page.goto(`${BASE}/preventivo`, { waitUntil: 'networkidle0' })
   await campo('Nome e cognome', 'Solo Normale')
   await page.goto(`${BASE}/prova-un-mese`, { waitUntil: 'networkidle0' })
   eq(await page.$eval('input[autocomplete="name"]', (e) => e.value), '')
-  await page.goto(`${BASE}/sito-su-misura`, { waitUntil: 'networkidle0' })
+  await page.goto(`${BASE}/preventivo`, { waitUntil: 'networkidle0' })
   eq(await page.$eval('input[autocomplete="name"]', (e) => e.value), 'Solo Normale')
 })
 await prova('Nel modulo normale restano disponibili tutte le 13 tipologie e il Chatbot AI', async () => {
   await page.evaluate(() => sessionStorage.clear())
-  await page.goto(`${BASE}/sito-su-misura`, { waitUntil: 'networkidle0' })
+  await page.goto(`${BASE}/preventivo`, { waitUntil: 'networkidle0' })
   await campo('Nome e cognome', 'Anna Neri'); await campo('Email', 'anna@test.it'); await campo('Codice fiscale', 'NRANNA80A41H501X'); await campo('Indirizzo', 'Via Dante 2, Roma')
   await avanti()
   eq(await page.$$eval('input[name="tipologia"]', (e) => e.length), 13)
@@ -223,7 +223,7 @@ await prova('Se l\'admin esclude un servizio dalla prova (SEO di base), sparisce
   nonContiene(await testo(), 'SEO di base')
   contiene(await testo(), 'Newsletter')
   await page.evaluate(() => sessionStorage.clear())
-  await page.goto(`${BASE}/sito-su-misura`, { waitUntil: 'networkidle0' })
+  await page.goto(`${BASE}/preventivo`, { waitUntil: 'networkidle0' })
   await campo('Nome e cognome', 'Anna Neri'); await campo('Email', 'anna@test.it'); await campo('Codice fiscale', 'NRANNA80A41H501X'); await campo('Indirizzo', 'Via Dante 2, Roma')
   await avanti()
   await cliccaTesto('label', 'Sito Vetrina'); await campo('Descrivi il sito', 'Un sito vetrina per il mio studio'); await avanti()

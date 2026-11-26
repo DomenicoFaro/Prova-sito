@@ -6,15 +6,16 @@ import { Logo } from './Logo'
 import { useAuth } from '../auth/AuthProvider'
 
 const VOCI = [
+  { to: '/offerte', label: 'Offerte', evidenza: true },
   { to: '/#servizi', label: 'Servizi' },
   { to: '/portfolio', label: 'Lavori' },
-  { to: '/#metodo', label: 'Come lavoriamo' },
+  { to: '/#metodo', label: 'Come lavoriamo', soloGrande: true },
   { to: '/#domande', label: 'Domande', soloGrande: true },
   { to: '/#contatti', label: 'Contatti' },
 ]
 
 const ORDINA = [
-  { to: '/sito-su-misura', label: 'Acquista il tuo sito' },
+  { to: '/preventivo', label: 'Crea il tuo preventivo' },
   { to: '/prova-un-mese', label: 'Prova il tuo sito' },
 ]
 
@@ -49,15 +50,16 @@ export function PublicLayout() {
                 className={`text-sm font-medium text-slate-600 transition hover:text-brand-950 aria-[current=page]:font-semibold aria-[current=page]:text-brand-950 ${v.soloGrande ? 'hidden xl:inline' : ''}`}
               >
                 {v.label}
+                {v.evidenza && <span className="ml-1.5 inline-block h-2 w-2 rounded-full bg-brand-500 align-middle" aria-hidden="true" />}
               </Link>
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/prova-un-mese" className="btn-ghost hidden px-3 lg:inline-flex">
+            <Link to="/prova-un-mese" className="btn-ghost hidden px-3 xl:inline-flex">
               Prova il tuo sito
             </Link>
-            <Link to="/sito-su-misura" className="btn-primary hidden sm:inline-flex">
-              Acquista il tuo sito
+            <Link to="/preventivo" className="btn-primary hidden sm:inline-flex">
+              Crea il tuo preventivo
             </Link>
             <Link to={areaRiservata} className="btn-secondary hidden p-2.5 sm:inline-flex" title="Area riservata" aria-label="Area riservata">
               <Icon name="lock" className="h-5 w-5" />

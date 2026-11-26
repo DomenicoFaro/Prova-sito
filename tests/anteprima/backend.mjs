@@ -23,7 +23,7 @@ create or replace function extensions.crypt(p text, s text) returns text languag
 `
 
 export async function preparaDb() {
-  const { db } = await creaDb()
+  const { db } = await creaDb({ offerte: true })
   await db.exec(STUB_ACCOUNT)
   await db.exec(sql('rimuovi_soci.sql'))
   await db.exec(sql('clienti_recensioni.sql'))

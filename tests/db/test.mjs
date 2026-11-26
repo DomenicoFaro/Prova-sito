@@ -586,6 +586,46 @@ await prova('Rieseguire configuratore.sql NON sovrascrive: contratto modificato,
 await prova('Il vincolo del contratto ammette solo i modelli 1 e 2', () =>
   errore(`insert into public.ordini_contratto (id, testo) values (3, 'x')`, [], 'ordini_contratto_id_check'))
 
+console.log('\nPrezzi mostrati e offerte')
+const imposta = async (chiave, valore) => {
+  await comeSuper()
+  await db.query('update public.configuratore_impostazioni set valore = $2 where chiave = $1', [chiave, valore])
+  await comeAnon()
+}
+await imposta('ribasso_stima', '10')
+await imposta('offerta_sconto', '30')
+await imposta('offerta_scadenza', '2999-12-31')
+await prova('Ribasso 10% e offerta 30%: Vetrina 299 → circa 269, scontata 188,30', async () => {
+  const r = await calcola({ tipologia: 'sito_vetrina' })
+  eq([Number(r.subtotale_listino), Number(r.subtotale), Number(r.offerta.sconto), Number(r.totale)], [299, 269, 80.7, 188.3])
+})
+await prova("L'urgenza si calcola sul prezzo scontato", async () => {
+  const r = await calcola({ tipologia: 'sito_vetrina', urgenza_confermata: true })
+  eq([Number(r.urgenza_importo), Number(r.totale)], [37.66, 225.96])
+})
+await prova("L'offerta di acquisto non vale per la prova", async () => {
+  const r = await calcola({ tipologia: 'sito_vetrina', prova: true })
+  eq([r.offerta, Number(r.totale), Number(r.prova.da_pagare_ora)], [null, 269, 100])
+})
+await prova('La richiesta salva il prezzo scontato (il browser non può inventare sconti)', async () => {
+  const token = await crea({ ...base, cliente_email: 'offerta@x.it', tipologia: 'sito_vetrina', offerta: { percentuale: 90, sconto: 260 } })
+  await comeSuper()
+  const o = (await db.query('select totale_indicativo, prezzo from public.ordini_siti where token = $1', [token])).rows[0]
+  eq([Number(o.totale_indicativo), o.prezzo], [188.3, null])
+  await comeAnon()
+})
+await prova('Offerta scaduta: nessuno sconto', async () => {
+  await imposta('offerta_scadenza', '2000-01-01')
+  const r = await calcola({ tipologia: 'sito_vetrina' })
+  eq([r.offerta, Number(r.totale)], [null, 269])
+})
+await prova("L'offerta vale ancora nel giorno della scadenza (ora italiana)", async () => {
+  await comeSuper()
+  await db.exec("update public.configuratore_impostazioni set valore = to_char(now() at time zone 'Europe/Rome', 'YYYY-MM-DD') where chiave = 'offerta_scadenza'")
+  await comeAnon()
+  eq((await calcola({ tipologia: 'sito_vetrina' })).offerta.percentuale, 30)
+})
+
 console.log(`\n${ok} test superati, ${falliti.length} falliti`)
 if (falliti.length) {
   console.log('Falliti:\n - ' + falliti.join('\n - '))

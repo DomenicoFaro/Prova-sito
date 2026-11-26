@@ -39,7 +39,7 @@ async function pagina(ruolo, id) {
 }
 
 const gruppi = [
-  [null, 'u0', ['/', '/portfolio', '/prezzi', '/sito-su-misura', '/acquista-sito-su-misura', '/prova-un-mese', '/ordine/11111111-2222-3333-4444-555555555555', '/login', '/password-dimenticata', '/pagina-inesistente', '/assistenza/11111111-2222-3333-4444-555555555555']],
+  [null, 'u0', ['/', '/portfolio', '/prezzi', '/preventivo', '/offerte', '/sito-su-misura', '/acquista-sito-su-misura', '/prova-un-mese', '/ordine/11111111-2222-3333-4444-555555555555', '/login', '/password-dimenticata', '/pagina-inesistente', '/assistenza/11111111-2222-3333-4444-555555555555']],
   ['admin', 'ua', ['/area', '/area/admin', '/area/admin/progetti', '/area/admin/progetti/nuovo', '/area/admin/progetti/p1', '/area/admin/preventivi', '/area/admin/pagamenti', '/area/admin/vendite', '/area/admin/opportunita', '/area/admin/collaboratori', '/area/admin/clienti', '/area/admin/clienti/ua', '/area/admin/recensioni', '/area/ticket', '/area/ticket/t1', '/area/prezzi', '/area/profilo']],
   ['cliente', 'ul', ['/area', '/area/cliente', '/area/ticket', '/area/profilo', '/area/prezzi', '/area/admin']],
   ['collaboratore', 'uc', ['/area', '/area/dashboard', '/area/vendite', '/area/vendite/nuova', '/area/opportunita', '/area/ticket', '/area/prezzi', '/area/profilo']],

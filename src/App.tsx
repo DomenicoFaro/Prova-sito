@@ -12,6 +12,7 @@ const Portfolio = lazy(() => import('./pages/public/Portfolio'))
 const ProgettoDettaglio = lazy(() => import('./pages/public/ProgettoDettaglio'))
 const SitoSuMisura = lazy(() => import('./pages/public/SitoSuMisura'))
 const Ordine = lazy(() => import('./pages/public/Ordine'))
+const Offerte = lazy(() => import('./pages/public/Offerte'))
 const NotFound = lazy(() => import('./pages/public/NotFound'))
 const Login = lazy(() => import('./pages/auth/Login'))
 const PasswordDimenticata = lazy(() => import('./pages/auth/PasswordDimenticata'))
@@ -54,9 +55,12 @@ export default function App() {
               <Route path="portfolio/:id" element={<ProgettoDettaglio />} />
               {/* Il listino prezzi è solo per chi ha un account: dal pannello (Area riservata → Prezzi) */}
               <Route path="prezzi" element={<Navigate to="/area/prezzi" replace />} />
-              <Route path="sito-su-misura" element={<SitoSuMisura key="standard" />} />
+              <Route path="preventivo" element={<SitoSuMisura key="standard" />} />
+              <Route path="offerte" element={<Offerte />} />
               <Route path="prova-un-mese" element={<SitoSuMisura key="prova" modo="prova" />} />
-              <Route path="acquista-sito-su-misura" element={<Navigate to="/sito-su-misura" replace />} />
+              {/* Vecchi indirizzi: restano validi per i link già condivisi */}
+              <Route path="sito-su-misura" element={<Navigate to="/preventivo" replace />} />
+              <Route path="acquista-sito-su-misura" element={<Navigate to="/preventivo" replace />} />
               <Route path="ordine/:token" element={<Ordine />} />
               <Route path="assistenza/:token" element={<Assistenza />} />
               <Route path="*" element={<NotFound />} />

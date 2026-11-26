@@ -6,6 +6,7 @@ import { Finestra, Telefono } from '../../components/Mockup'
 import { ProjectCard, ProjectCardScheletro } from '../../components/ProjectCard'
 import { quante, SezioneRecensioni, useRecensioni, votoInTesto } from '../../components/Recensioni'
 import { Reveal } from '../../components/Reveal'
+import { SezioneOfferte } from '../../components/Offerte'
 import { Stelle } from '../../components/Stelle'
 import { Seo } from '../../components/Seo'
 import { ModuloContatto } from '../../components/ModuloContatto'
@@ -27,6 +28,7 @@ export default function Home() {
     <>
       <Seo />
       <Hero voto={recensioni.media} totale={recensioni.elenco.length} />
+      <SezioneOfferte />
       <SezioneRecensioni {...recensioni} />
       <Clienti lavori={lavori} />
       <Servizi lavori={lavori} />
@@ -88,8 +90,8 @@ function Hero({ voto, totale }: { voto: number; totale: number }) {
           Forma Web realizza vetrine, negozi online, prenotazioni e gestionali su misura. Belli da vedere e semplici da usare, prima di tutto dal telefono.
         </p>
         <div className="sali mt-9 flex flex-col justify-center gap-3 sm:flex-row" style={{ animationDelay: '0.24s' }}>
-          <Link to="/sito-su-misura" className="btn-primary btn-grande">
-            Acquista il tuo sito <Icon name="arrowRight" className="h-4 w-4" />
+          <Link to="/preventivo" className="btn-primary btn-grande">
+            Crea il tuo preventivo <Icon name="arrowRight" className="h-4 w-4" />
           </Link>
           <Link to="/prova-un-mese" className="btn-secondary btn-grande">
             <Icon name="clock" className="h-4 w-4" /> Prova il tuo sito
@@ -304,8 +306,8 @@ function Contatti() {
                 Hai una domanda o un’idea? Raccontaci cosa ti serve: apriamo un ticket e ti rispondiamo in chat, qui sul sito.
               </p>
               <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap lg:justify-start">
-                <Link to="/sito-su-misura" className="btn-primary btn-grande">
-                  Acquista il tuo sito <Icon name="arrowRight" className="h-4 w-4" />
+                <Link to="/preventivo" className="btn-primary btn-grande">
+                  Crea il tuo preventivo <Icon name="arrowRight" className="h-4 w-4" />
                 </Link>
                 <Link to="/prova-un-mese" className="btn-secondary btn-grande">
                   <Icon name="clock" className="h-4 w-4" /> Prova il tuo sito

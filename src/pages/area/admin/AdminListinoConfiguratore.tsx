@@ -6,6 +6,8 @@ import {
   AVVISO_SERVIZI_PREDEFINITO,
   CODICE_PAGINA_AGGIUNTIVA,
   formatPrezzoVoce,
+  formatStima,
+  vociConStima,
   type GruppoVoce,
   type Impostazioni,
   type ModalitaPrezzo,
@@ -145,7 +147,7 @@ function ImpostazioniListino({ impostazioni, onSalvato }: { impostazioni: Impost
   )
 }
 
-/** Listino del configuratore «Acquista il tuo sito»: prezzi, descrizioni, servizi esterni e supplementi. Solo admin. */
+/** Listino di «Crea il tuo preventivo»: prezzi, descrizioni, servizi esterni e supplementi. Solo admin. */
 export function AdminListinoConfiguratore() {
   const { dati, caricamento, errore, ricarica } = useQuery(async () => {
     const [voci, imp] = await Promise.all([
@@ -264,7 +266,7 @@ export function AdminListinoConfiguratore() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-slate-600">
-        Qui decidi prezzi, descrizioni, servizi esterni e supplementi del modulo «Acquista il tuo sito» e della «Prova un mese» (colonna «In prova»). Le modifiche valgono per le richieste
+        Qui decidi prezzi, descrizioni, servizi esterni e supplementi di «Crea il tuo preventivo» e della «Prova un mese» (colonna «In prova»). Ribasso dei prezzi mostrati e sconti si impostano nella scheda «Offerte». Le modifiche valgono per le richieste
         nuove; quelle già ricevute restano com&apos;erano. I prezzi li legge solo il server: chi non è admin non può cambiarli.
       </p>
       {esito && <MessaggioSuccesso>{esito}</MessaggioSuccesso>}
@@ -285,7 +287,8 @@ export function AdminListinoConfiguratore() {
               <thead>
                 <tr>
                   <th>Nome</th>
-                  <th>{gruppo === 'servizio_esterno' ? 'Costo' : 'Prezzo'}</th>
+                  <th>{gruppo === 'servizio_esterno' ? 'Costo' : 'Listino'}</th>
+                  {gruppo !== 'servizio_esterno' && <th>Il cliente vede</th>}
                   {gruppo === 'tipologia' && <th>Pagine incluse</th>}
                   {gruppo !== 'servizio_esterno' && <th>In prova</th>}
                   <th>Visibile</th>
@@ -302,6 +305,7 @@ export function AdminListinoConfiguratore() {
                         {v.descrizione && <p className="max-w-md truncate text-xs text-slate-500">{v.descrizione}</p>}
                       </td>
                       <td className="whitespace-nowrap tabular-nums">{gruppo === 'servizio_esterno' ? v.costo_testo || '—' : formatPrezzoVoce(v)}</td>
+                      {gruppo !== 'servizio_esterno' && <td className="whitespace-nowrap text-slate-500 tabular-nums">{formatStima(vociConStima([v], dati.impostazioni)[0])}</td>}
                       {gruppo === 'tipologia' && <td>{v.modalita === 'preventivo' ? '—' : v.pagine_incluse}</td>}
                       {gruppo !== 'servizio_esterno' && <td>{v.in_prova ? 'Sì' : <span className="text-slate-400">No</span>}</td>}
                       <td>{v.attivo ? 'Sì' : 'Nascosta'}</td>
