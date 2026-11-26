@@ -139,7 +139,7 @@ insert into public.configuratore_impostazioni (chiave, valore) values
   ('prova_prezzo',          '100'),
   ('prova_sconto_extra',    '70'),
   ('ribasso_stima',         '10'),
-  ('offerta_sconto',        '30'),
+  ('offerta_sconto',        '25'),
   ('offerta_scadenza',      '2026-12-08'),
   ('prova_offerta_scadenza','2026-12-31')
 on conflict (chiave) do nothing;

@@ -77,7 +77,7 @@ Il pagamento usa **Stripe**: nessun canone mensile, solo commissione sulle vendi
    - La consegna urgente (+20%) non entra nel totale finché non la confermi tu sull'ordine.
    **Prezzi indicativi e offerte** (`/offerte` e sezione nella home): per attivarli **riesegui `configuratore.sql`** e ripubblica il sito (facoltativo: `npx supabase functions deploy notifica-richiesta --no-verify-jwt` per vedere l'offerta nell'email). Si impostano da *Area riservata → Preventivi → Offerte*:
    - **ribasso dei prezzi mostrati** (di partenza 10%): il cliente vede «circa», sotto il listino; il prezzo finale lo scrivi tu sull'ordine;
-   - **sconto sull'acquisto** (di partenza 30% fino all'8/12/2026): calcolato dal server sulle richieste inviate entro la data; non vale per la prova;
+   - **sconto sull'acquisto** (di partenza 25% fino all'8/12/2026): calcolato dal server sulle richieste inviate entro la data; non vale per la prova;
    - **offerta «Prova il tuo sito»** (in evidenza fino al 31/12/2026): dopo la data sparisce il riquadro, ma la prova resta ordinabile al prezzo impostato.
    **Prova un mese** (`/prova-un-mese`, voce di menu e pulsante nella home): il cliente prova il sito per un mese pagando **100 €** più le **funzionalità aggiuntive (pagine comprese) scontate del 70%**; il resto del prezzo pieno lo paga dopo il mese, solo se il sito è piaciuto. Prezzo e sconto li imposti da *Preventivi → Listino prezzi e servizi → Impostazioni*.
    - Ogni tipologia e ogni funzionalità ha la casella **«Disponibile anche nella Prova un mese»** (stesso pannello): da lì decidi cosa si può provare. Di partenza restano fuori sito personalizzato, gestionale, chatbot AI e gestione ordini.
