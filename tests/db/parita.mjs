@@ -44,6 +44,13 @@ for (const { urg, prova, giri } of modi) {
       await db.query("update public.configuratore_impostazioni set valore = $1 where chiave = 'prova_prezzo'", [impI.prova_prezzo])
       await db.query("update public.configuratore_impostazioni set valore = $1 where chiave = 'prova_sconto_extra'", [impI.prova_sconto_extra])
     }
+    // ribasso e offerta casuali, comprese le scadenze passate
+    impI.ribasso_stima = pick(['0', '10', '15', '7,5', '33,3'])
+    impI.offerta_sconto = pick(['0', '30', '12,5'])
+    impI.offerta_scadenza = pick(['2999-12-31', '2999-12-31', '2000-01-01', ''])
+    for (const k of ['ribasso_stima', 'offerta_sconto', 'offerta_scadenza']) {
+      await db.query('update public.configuratore_impostazioni set valore = $1 where chiave = $2', [impI[k], k])
+    }
     const ex = {}
     for (const e of prova ? extra.filter((x) => x.in_prova) : extra) if (rnd() < 0.35) ex[e.codice] = e.a_quantita ? 1 + Math.floor(rnd() * 25) : 1 + Math.floor(rnd() * 3)
     const pagine = 1 + Math.floor(rnd() * 40)
@@ -54,6 +61,9 @@ for (const { urg, prova, giri } of modi) {
     const confronta = [
       ['subtotale', Number(a.subtotale), Number(b.subtotale)],
       ['totale', Number(a.totale), Number(b.totale)],
+      ['listino', Number(a.subtotale_listino), Number(b.subtotale_listino)],
+      ['prezzo base', a.tipologia.prezzo, b.tipologia.prezzo == null ? null : Number(b.tipologia.prezzo)],
+      ['offerta', Number(a.offerta?.sconto ?? -1), Number(b.offerta?.sconto ?? -1)],
       ['urgenza', Number(a.urgenza_importo), Number(b.urgenza_importo)],
       ['pag_extra', a.pagine_extra, b.pagine_extra],
       ['pag_importo', Number(a.pagine_extra_importo), Number(b.pagine_extra_importo)],

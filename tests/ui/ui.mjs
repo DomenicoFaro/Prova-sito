@@ -104,20 +104,20 @@ const campo = async (etichetta, valore) => {
 }
 
 console.log('Modulo a 5 passaggi')
-await page.goto(`${BASE}/sito-su-misura`, { waitUntil: 'networkidle0' })
+await page.goto(`${BASE}/preventivo`, { waitUntil: 'networkidle0' })
 
 await prova('La pagina si apre, mostra i 5 passaggi e il primo', async () => {
   const t = await testo()
-  contiene(t, 'Il tuo sito, su misura')
+  contiene(t, 'Crea il tuo preventivo')
   eq(await titoloPasso(), '1. I tuoi dati')
   for (const p of ['I tuoi dati', 'Il tuo sito', 'Personalizzazione', 'Preventivo', 'Conferma']) contiene(await page.evaluate(() => document.querySelector('nav[aria-label="Avanzamento"]').innerHTML), p)
 })
-await prova('/acquista-sito-su-misura porta alla pagina del modulo', async () => {
+await prova('I vecchi indirizzi (/acquista-sito-su-misura) portano a /preventivo', async () => {
   const p2 = await browser.newPage()
   await p2.setRequestInterception(true)
   p2.on('request', (r) => (new URL(r.url()).host === SUPA ? r.respond({ status: 200, headers: CORS, contentType: 'application/json', body: '[]' }) : r.continue()))
   await p2.goto(`${BASE}/acquista-sito-su-misura`, { waitUntil: 'networkidle0' })
-  eq(new URL(p2.url()).pathname, '/sito-su-misura')
+  eq(new URL(p2.url()).pathname, '/preventivo')
   await p2.close()
 })
 await prova('Avanti con dati mancanti → messaggio di errore chiaro, resta sul passo 1', async () => {
@@ -143,7 +143,7 @@ await prova('Dati completi → passo 2', async () => {
 })
 await prova('Tutte le 13 tipologie sono mostrate con prezzo di partenza', async () => {
   const t = await testo()
-  for (const s of ['Landing Page', '199', 'Sito Vetrina', 'Ristorante / Bar', 'Barbiere / Centro Estetico', 'Hotel / B&B', 'Agenzia Immobiliare', 'E-commerce', 'da 1.199', 'Su preventivo']) contiene(t, s)
+  for (const s of ['Landing Page', '199', 'Sito Vetrina', 'Ristorante / Bar', 'Barbiere / Centro Estetico', 'Hotel / B&B', 'Agenzia Immobiliare', 'E-commerce', 'da circa 1.199', 'Su preventivo']) contiene(t, s)
   eq(await page.$$eval('input[name="tipologia"]', (e) => e.length), 13)
 })
 await prova('Avanti senza scegliere il tipo di sito → errore', async () => {
@@ -154,21 +154,21 @@ await prova('Avanti senza scegliere il tipo di sito → errore', async () => {
 await prova('Scegliere "Ristorante / Bar" mostra il totale in tempo reale (399 €)', async () => {
   await cliccaTesto('label', 'Ristorante / Bar')
   await attendi()
-  contiene(await totaleBarra(), '399,00')
+  contiene(await totaleBarra(), 'circa 399')
 })
 await prova('Contatore pagine: 6 pagine → 399 + 2×49 = 497 €', async () => {
   await scrive('input[aria-label="Numero di pagine"]', '6')
   await attendi()
-  contiene(await totaleBarra(), '497,00')
+  contiene(await totaleBarra(), 'circa 497')
   contiene(await testo(), '4 incluse')
 })
 await prova('I pulsanti − e + del contatore pagine funzionano', async () => {
   await page.$eval('button[aria-label="Una pagina in più"]', (b) => b.click())
   await attendi()
-  contiene(await totaleBarra(), '546,00')
+  contiene(await totaleBarra(), 'circa 546')
   await page.$eval('button[aria-label="Una pagina in meno"]', (b) => b.click())
   await attendi()
-  contiene(await totaleBarra(), '497,00')
+  contiene(await totaleBarra(), 'circa 497')
 })
 await prova('Descrizione troppo corta → errore; poi passo 3', async () => {
   await cliccaTesto('button', 'Avanti')
@@ -182,48 +182,48 @@ await prova('Descrizione troppo corta → errore; poi passo 3', async () => {
 await prova('Extra: Modulo contatti +39 → 536 €', async () => {
   await cliccaTesto('label', 'Modulo contatti')
   await attendi()
-  contiene(await totaleBarra(), '536,00')
+  contiene(await totaleBarra(), 'circa 536')
 })
 await prova('Lingua aggiuntiva con contatore: 2 lingue → +198 → 734 €', async () => {
   await cliccaTesto('label', 'Lingua aggiuntiva')
   await attendi()
-  contiene(await totaleBarra(), '635,00')
+  contiene(await totaleBarra(), 'circa 635')
   await page.$eval('button[aria-label="Una lingua aggiuntiva in più"]', (b) => b.click())
   await attendi()
-  contiene(await totaleBarra(), '734,00')
+  contiene(await totaleBarra(), 'circa 734')
 })
 await prova('Togliere un extra aggiorna il totale (Modulo contatti via → 695 €)', async () => {
   await cliccaTesto('label', 'Modulo contatti')
   await attendi()
-  contiene(await totaleBarra(), '695,00')
+  contiene(await totaleBarra(), 'circa 695')
   await cliccaTesto('label', 'Modulo contatti')
   await attendi()
-  contiene(await totaleBarra(), '734,00')
+  contiene(await totaleBarra(), 'circa 734')
 })
 await prova('Extra "da" (Chatbot AI): avviso "da confermare" e totale parziale', async () => {
   await cliccaTesto('label', 'Chatbot AI')
   await attendi()
   contiene(await testo(), 'Prezzo indicativo, da confermare')
   contiene(await totaleBarra(), 'da')
-  contiene(await totaleBarra(), '933,00')
+  contiene(await totaleBarra(), 'circa 933')
   await cliccaTesto('label', 'Chatbot AI')
   await attendi()
-  contiene(await totaleBarra(), '734,00')
+  contiene(await totaleBarra(), 'circa 734')
 })
 await prova('Budget: le 6 fasce ci sono e non cambiano il totale', async () => {
   for (const f of ['Meno di 300', '300–600', '600–1.000', '1.000–2.000', 'Oltre 2.000', 'Non ho un budget preciso']) contiene(await testo(), f)
   await cliccaTesto('label', '600–1.000')
   await attendi()
-  contiene(await totaleBarra(), '734,00')
+  contiene(await totaleBarra(), 'circa 734')
 })
 await prova('Consegna urgente: mostra il supplemento 20% (≈146,80) SENZA aggiungerlo al totale', async () => {
   await cliccaTesto('label', 'Consegna urgente')
   await attendi()
   const t = await testo()
   contiene(t, '20%')
-  contiene(t, '146,80')
+  contiene(t, 'circa 147')
   contiene(t, 'solo previa conferma')
-  contiene(await totaleBarra(), '734,00')
+  contiene(await totaleBarra(), 'circa 734')
 })
 await prova('Allegato valido: caricato nel bucket privato nella cartella della richiesta', async () => {
   writeFileSync(join(TMP, 'prova.pdf'), '%PDF-1.4 prova')
@@ -259,7 +259,7 @@ await prova('Indietro al passo 2: i dati e la scelta sono ancora lì', async () 
   eq(await page.$eval('input[name="tipologia"]:checked', (e) => e.closest('label').innerText.includes('Ristorante')), true)
   eq(await page.$eval('input[aria-label="Numero di pagine"]', (e) => e.value), '6')
   contiene(await page.$eval('textarea', (e) => e.value), 'ristorante in centro')
-  contiene(await totaleBarra(), '734,00')
+  contiene(await totaleBarra(), 'circa 734')
 })
 await prova('Indietro al passo 1: i dati personali ci sono ancora', async () => {
   await cliccaTesto('button', 'Indietro')
@@ -275,7 +275,7 @@ await prova('Ricaricare la pagina NON fa perdere nulla (bozza salvata)', async (
   eq(await page.$eval('input[name="tipologia"]:checked', (e) => e.closest('label').innerText.includes('Ristorante')), true)
   await cliccaTesto('button', 'Avanti')
   await attendi(400)
-  contiene(await totaleBarra(), '734,00')
+  contiene(await totaleBarra(), 'circa 734')
 })
 await prova('Passo 4: riepilogo corretto, totale, urgenza separata, avviso e servizi esterni', async () => {
   await cliccaTesto('button', 'Avanti')
@@ -331,7 +331,7 @@ await prova('Pagina ordine: spiega che il pagamento è bloccato fino alla confer
   const t = await testo()
   contiene(t, 'Stiamo confermando il tuo preventivo')
   contiene(t, 'Il pagamento sarà disponibile solo dopo questa conferma')
-  contiene(t, 'Totale indicativo')
+  contiene(t, 'Prezzo indicativo')
   contiene(t, 'Lingua aggiuntiva')
   if (/Accetta e paga/.test(t)) throw new Error('il pulsante di pagamento non deve comparire')
 })
@@ -354,7 +354,7 @@ await prova('Dopo la conferma di FormaWeb compare il pagamento', async () => {
 
 console.log('\nCasi particolari')
 await page.evaluate(() => sessionStorage.clear())
-await page.goto(`${BASE}/sito-su-misura`, { waitUntil: 'networkidle0' })
+await page.goto(`${BASE}/preventivo`, { waitUntil: 'networkidle0' })
 const compilaP1 = async () => {
   await campo('Nome e cognome', 'Anna Bianchi'); await campo('Email', 'anna@test.it'); await campo('Codice fiscale', 'BNCNNA80A41H501X'); await campo('Indirizzo', 'Via Dante 2, Roma')
   await cliccaTesto('button', 'Avanti'); await attendi(400)
@@ -371,9 +371,9 @@ await prova('Funzionalità già inclusa (Prenotazioni Online + Sistema prenotazi
     return { checked: i.checked, disabled: i.disabled, testo: l.innerText }
   })
   eq(inclusa.checked, true); eq(inclusa.disabled, true); contiene(inclusa.testo, 'Inclusa')
-  contiene(await totaleBarra(), '599,00')
+  contiene(await totaleBarra(), 'circa 599')
   await cliccaTesto('label', 'SEO di base'); await attendi()
-  contiene(await totaleBarra(), '698,00')
+  contiene(await totaleBarra(), 'circa 698')
 })
 await prova('Sito Personalizzato: richiede approvazione manuale, avviso e nessun prezzo inventato', async () => {
   await cliccaTesto('button', 'Indietro'); await attendi(400)
@@ -383,16 +383,17 @@ await prova('Sito Personalizzato: richiede approvazione manuale, avviso e nessun
   const t = await testo()
   contiene(t, 'Richiede approvazione manuale')
   contiene(t, 'il pagamento non sarà disponibile')
-  contiene(t, 'Totale indicativo (parziale)')
+  contiene(t, 'Prezzo indicativo (parziale)')
 })
 
 console.log('\nIl listino prezzi NON è più pubblico')
 await page.goto(`${BASE}/`, { waitUntil: 'networkidle0' })
-await prova('Home: niente pulsante né voce di menu «Prezzi»; c\'è «Prova un mese»', async () => {
+await prova('Home: niente pulsante né voce di menu «Prezzi»; c\'è «Prova il tuo sito»', async () => {
   const t = await testo()
   if (/\bPrezzi\b/.test(t)) throw new Error('compare ancora "Prezzi" nella home')
-  contiene(t, 'Prova un mese')
-  contiene(t, 'Acquista il tuo sito')
+  contiene(t, 'Prova il tuo sito')
+  contiene(t, 'Crea il tuo preventivo')
+  if (/Acquista il tuo sito/.test(t)) throw new Error('compare ancora «Acquista il tuo sito»')
 })
 await prova('/prezzi non mostra nulla ai visitatori: porta al login', async () => {
   await page.goto(`${BASE}/prezzi`, { waitUntil: 'networkidle0' })
@@ -403,7 +404,7 @@ await prova('/prezzi non mostra nulla ai visitatori: porta al login', async () =
 console.log('\nResponsive (telefono 375 px)')
 await page.setViewport({ width: 375, height: 812, isMobile: true, hasTouch: true })
 await page.evaluate(() => sessionStorage.clear())
-await page.goto(`${BASE}/sito-su-misura`, { waitUntil: 'networkidle0' })
+await page.goto(`${BASE}/preventivo`, { waitUntil: 'networkidle0' })
 await compilaP1()
 await prova('Nessuno scorrimento orizzontale nei passi 1 e 2', async () => {
   await page.screenshot({ path: join(TMP, 'passo2-mobile.png') })

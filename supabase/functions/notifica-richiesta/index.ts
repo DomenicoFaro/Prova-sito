@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
       rispondiA: o.cliente_email, // rispondendo alla mail scrivi direttamente al cliente
       oggetto: `Nuova richiesta ${numero}${o.nome_attivita ? ` – ${o.nome_attivita}` : ''}`,
       contenuto: {
-        anteprima: `${o.cliente_nome} ha chiesto un preventivo${o.totale_indicativo != null ? ` (indicativo ${euro(o.totale_indicativo)})` : ''}.`,
+        anteprima: `${o.cliente_nome} ha chiesto un preventivo${o.totale_indicativo != null ? ` (indicativo circa ${euro(o.totale_indicativo)})` : ''}.`,
         titolo: prova ? 'Nuova richiesta: prova un mese' : 'Nuova richiesta di preventivo',
         intro: [
           `${o.cliente_nome} ha appena inviato una richiesta dal sito. Qui sotto trovi i dati principali.`,
@@ -59,7 +59,8 @@ Deno.serve(async (req) => {
           ['Funzionalità', funz.length ? funz.join(', ') : '—'],
           ['Consegna', o.scadenza || '—'],
           ['Budget', o.budget || '—'],
-          ['Totale indicativo', o.totale_indicativo != null ? euro(o.totale_indicativo) : '—'],
+          ['Prezzo indicativo', o.totale_indicativo != null ? `circa ${euro(o.totale_indicativo)}` : '—'],
+          ...(o.dettaglio_preventivo?.offerta ? ([['Offerta applicata', `−${o.dettaglio_preventivo.offerta.percentuale}%`]] as [string, string][]) : []),
           ['Allegati', String((o.allegati ?? []).length)],
         ],
         citazione: { titolo: 'Descrizione del cliente', testo: o.descrizione },

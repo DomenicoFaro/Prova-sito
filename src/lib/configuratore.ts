@@ -60,6 +60,14 @@ export interface ProvaPreventivo {
 
 export type ModoOrdine = 'standard' | 'prova'
 
+export interface OffertaPreventivo {
+  percentuale: number
+  /** Ultimo giorno valido, AAAA-MM-GG. */
+  scadenza: string
+  /** Importo tolto dal subtotale. */
+  sconto: number
+}
+
 /** Stessa forma restituita dalla funzione SQL `calcola_preventivo` (e salvata in `dettaglio_preventivo`). */
 export interface Preventivo {
   tipologia: { codice: string; nome: string; prezzo: number | null; modalita: ModalitaPrezzo }
@@ -69,6 +77,11 @@ export interface Preventivo {
   pagine_extra_importo: number
   righe: RigaPreventivo[]
   subtotale: number
+  /** Lo stesso subtotale a listino pieno. Assente nei preventivi salvati prima delle offerte. */
+  subtotale_listino?: number
+  ribasso_percentuale?: number
+  /** Offerta in corso al momento del calcolo (mai per la prova). */
+  offerta?: OffertaPreventivo | null
   urgenza_percentuale: number
   urgenza_importo: number
   urgenza_confermata: boolean
@@ -119,10 +132,60 @@ export function impostazioniProva(imp: Impostazioni): { prezzo: number; sconto: 
   }
 }
 
+const percentuale = (v: string | undefined) => (v != null && /^[0-9]{1,2}([.,][0-9]+)?$/.test(v) ? Number(v.replace(',', '.')) : 0)
+
+/** Di quanto i prezzi mostrati ai clienti stanno sotto il listino (%). */
+export const ribassoStima = (imp: Impostazioni) => percentuale(imp.ribasso_stima)
+
+/** Prezzo mostrato al cliente: listino meno il ribasso, arrotondato all'euro. */
+export function prezzoStima(listino: number, ribasso: number): number {
+  return Math.round(arrotonda((listino * (100 - ribasso)) / 100))
+}
+
+/** Le voci con il prezzo che vede il cliente. Solo per mostrarle: `calcolaPreventivo` vuole il listino. */
+export function vociConStima(voci: VoceConfiguratore[], imp: Impostazioni): VoceConfiguratore[] {
+  const r = ribassoStima(imp)
+  return voci.map((v) => (v.prezzo == null ? v : { ...v, prezzo: prezzoStima(v.prezzo, r) }))
+}
+
+/** Oggi in Italia, AAAA-MM-GG: le offerte scadono a mezzanotte ora italiana, come sul server. */
+export function oggiInItalia(adesso = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).format(adesso)
+}
+
+const ancoraValida = (scadenza: string | undefined, oggi: string): scadenza is string =>
+  scadenza != null && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(scadenza) && oggi <= scadenza
+
+/** Offerte attive oggi; null se spente o scadute. */
+export function offerteAttive(imp: Impostazioni, oggi = oggiInItalia()) {
+  const pct = percentuale(imp.offerta_sconto)
+  return {
+    acquisto: pct > 0 && ancoraValida(imp.offerta_scadenza, oggi) ? { percentuale: pct, scadenza: imp.offerta_scadenza } : null,
+    prova: ancoraValida(imp.prova_offerta_scadenza, oggi) ? { ...impostazioniProva(imp), scadenza: imp.prova_offerta_scadenza } : null,
+  }
+}
+
+/** "2026-12-08" → "8 dicembre 2026" */
+export function dataEstesa(iso: string): string {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+/** Importo senza i centesimi quando sono zero: "270 €", "188,30 €". */
+export const euroBreve = (n: number) => formatEuro(n).replace(/,00(?=\s)/, '')
+
+/** Un totale come lo legge il cliente, arrotondato all'euro: "circa 188 €". */
+export const circa = (n: number) => `circa ${euroBreve(Math.round(n))}`
+
+/** Prezzo di una voce per il cliente: "circa 269 €", "da circa 1.079 €", "Su preventivo". */
+export function formatStima(v: Pick<VoceConfiguratore, 'prezzo' | 'modalita'>, prefisso = ''): string {
+  if (v.modalita === 'preventivo' || v.prezzo == null) return 'Su preventivo'
+  return `${v.modalita === 'da' ? 'da ' : ''}${prefisso}circa ${euroBreve(v.prezzo)}`
+}
+
 /**
  * Calcolo istantaneo mostrato nel modulo. È una COPIA di `calcola_preventivo` (SQL), che resta l'unica
  * fonte di verità: all'invio il server ricalcola tutto e ignora i numeri del browser.
- *   totale = prezzo base + pagine aggiuntive + extra (non già inclusi) + urgenza SOLO se confermata
+ *   ogni prezzo = listino meno il ribasso · totale = subtotale − offerta (non per la prova) + urgenza SOLO se confermata
  */
 export function calcolaPreventivo(voci: VoceConfiguratore[], imp: Impostazioni, sel: Selezione): Preventivo | null {
   const t = voci.find((v) => v.gruppo === 'tipologia' && v.codice === sel.tipologia)
@@ -130,12 +193,16 @@ export function calcolaPreventivo(voci: VoceConfiguratore[], imp: Impostazioni, 
   if (sel.prova && !t.in_prova) return null
 
   const pagine = Math.min(Math.max(Math.trunc(sel.pagine) || 1, 1), MAX_PAGINE)
-  let sub = t.prezzo ?? 0
+  const rib = ribassoStima(imp)
+  const stima = (listino: number | null) => (listino == null ? 0 : prezzoStima(Number(listino), rib))
+  let sub = stima(t.prezzo)
+  let subListino = Number(t.prezzo ?? 0)
   let appr = t.modalita !== 'fisso'
 
   const pagExtra = t.modalita === 'preventivo' ? 0 : Math.max(0, pagine - t.pagine_incluse)
   const prezzoPagina = voci.find((v) => v.gruppo === 'extra' && v.codice === CODICE_PAGINA_AGGIUNTIVA)?.prezzo ?? 0
-  const pagImporto = pagExtra * Number(prezzoPagina)
+  const pagImporto = pagExtra * stima(prezzoPagina)
+  subListino += pagExtra * Number(prezzoPagina)
   sub += pagImporto
   let extSum = pagImporto
 
@@ -146,7 +213,8 @@ export function calcolaPreventivo(voci: VoceConfiguratore[], imp: Impostazioni, 
     if (!v) continue
     const quantita = v.a_quantita ? Math.min(q, MAX_QUANTITA) : 1
     const incluso = t.incluse.includes(codice)
-    const importo = incluso ? 0 : Number(v.prezzo ?? 0) * quantita
+    const importo = incluso ? 0 : stima(v.prezzo) * quantita
+    subListino += incluso ? 0 : Number(v.prezzo ?? 0) * quantita
     if (!incluso && v.modalita !== 'fisso') appr = true
     extSum += importo
     righe.push({ codice, nome: v.nome, quantita, importo, incluso, modalita: v.modalita })
@@ -155,7 +223,10 @@ export function calcolaPreventivo(voci: VoceConfiguratore[], imp: Impostazioni, 
   righe.sort((a, b) => (voci.find((v) => v.codice === a.codice)?.ordine ?? 0) - (voci.find((v) => v.codice === b.codice)?.ordine ?? 0))
 
   const pct = percentualeUrgenza(imp)
-  const urg = arrotonda((sub * pct) / 100)
+  const inCorso = sel.prova ? null : offerteAttive(imp).acquisto
+  const offerta: OffertaPreventivo | null = inCorso ? { ...inCorso, sconto: arrotonda((sub * inCorso.percentuale) / 100) } : null
+  const scontato = arrotonda(sub - (offerta?.sconto ?? 0))
+  const urg = arrotonda((scontato * pct) / 100)
   const confermata = sel.urgenzaConfermata === true && !sel.prova
   let prova: ProvaPreventivo | null = null
   if (sel.prova) {
@@ -175,25 +246,28 @@ export function calcolaPreventivo(voci: VoceConfiguratore[], imp: Impostazioni, 
   }
   return {
     prova,
-    tipologia: { codice: t.codice, nome: t.nome, prezzo: t.prezzo, modalita: t.modalita },
+    tipologia: { codice: t.codice, nome: t.nome, prezzo: t.prezzo == null ? null : stima(t.prezzo), modalita: t.modalita },
     pagine,
     pagine_incluse: t.pagine_incluse,
     pagine_extra: pagExtra,
     pagine_extra_importo: pagImporto,
     righe,
     subtotale: sub,
+    subtotale_listino: subListino,
+    ribasso_percentuale: rib,
+    offerta,
     urgenza_percentuale: pct,
     urgenza_importo: urg,
     urgenza_confermata: confermata,
-    totale: arrotonda(sub + (confermata ? urg : 0)),
+    totale: arrotonda(scontato + (confermata ? urg : 0)),
     approvazione_manuale: appr,
   }
 }
 
-/** Prezzo di una voce come lo vede il cliente: "299 €", "da 1.199 €", "Su preventivo". */
+/** Prezzo di una voce nel listino interno: "299 €", "da 1.199 €", "Su preventivo". */
 export function formatPrezzoVoce(v: Pick<VoceConfiguratore, 'prezzo' | 'modalita'>, prefisso = ''): string {
   if (v.modalita === 'preventivo' || v.prezzo == null) return 'Su preventivo'
-  const importo = formatEuro(v.prezzo).replace(/,00(?=\s)/, '')
+  const importo = euroBreve(v.prezzo)
   return `${v.modalita === 'da' ? 'da ' : ''}${prefisso}${importo}`
 }
 

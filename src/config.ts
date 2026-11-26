@@ -6,7 +6,7 @@ export const SITO = {
   dominio: 'formaweb.shop',
   url: 'https://formaweb.shop',
   descrizione:
-    'Forma Web realizza siti web su misura per attività e professionisti. Prova il tuo sito e acquistalo online: preventivo, contratto e pagamento in pochi minuti.',
+    'Forma Web realizza siti web su misura per attività e professionisti. Crea il tuo preventivo online o prova il sito per un mese: poi contratto e pagamento in pochi minuti.',
 }
 
 /**
@@ -73,7 +73,7 @@ export const FUNZIONI: { icona: NomeIcona; titolo: string; testo: string }[] = [
 ]
 
 export const PASSI = [
-  { titolo: 'Scegli', testo: 'Componi il tuo sito online e vedi subito un preventivo indicativo.' },
+  { titolo: 'Scegli', testo: 'Crea il preventivo online e vedi subito il prezzo indicativo.' },
   { titolo: 'Conferma', testo: 'Confermiamo il preventivo, poi leggi il contratto, accetti e paghi online.' },
   { titolo: 'Realizzazione', testo: 'Costruiamo il sito con le funzioni che ti servono davvero.' },
   { titolo: 'Online', testo: 'Pubblichiamo e restiamo disponibili per modifiche e manutenzione.' },
@@ -98,7 +98,7 @@ export const DOMANDE = [
   },
   {
     domanda: 'Quanto costa?',
-    risposta: 'Dipende da pagine e funzioni. Con «Acquista il tuo sito» scegli quello che ti serve e vedi subito un preventivo indicativo.',
+    risposta: 'Dipende da pagine e funzioni. Con «Crea il tuo preventivo» scegli quello che ti serve e vedi subito un prezzo indicativo; quello finale lo confermiamo noi.',
   },
   {
     domanda: 'Posso provarlo prima?',

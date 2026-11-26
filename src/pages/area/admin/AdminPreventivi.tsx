@@ -3,13 +3,14 @@ import { useAuth } from '../../../auth/AuthProvider'
 import { Icon } from '../../../components/Icon'
 import { RiepilogoPreventivo } from '../../../components/RiepilogoPreventivo'
 import { TestoContratto } from '../../../components/TestoContratto'
-import { Caricamento, IntestazionePagina, MessaggioErrore, MessaggioSuccesso, Modale, Spinner, TabellaScroll, Vuoto } from '../../../components/ui'
-import { BUCKET_ALLEGATI } from '../../../lib/configuratore'
+import { Caricamento, IntestazionePagina, MessaggioErrore, MessaggioSuccesso, Modale, Spinner, StatCard, TabellaScroll, Vuoto } from '../../../components/ui'
+import { BUCKET_ALLEGATI, circa } from '../../../lib/configuratore'
 import { formatData, formatDataOra, formatEuro, parseNumero } from '../../../lib/format'
 import { ETICHETTE_STATO_ORDINE, linkOrdine, scaricaContratto, type OrdineSito, type StatoOrdine } from '../../../lib/ordini'
 import { messaggioErrore, supabase } from '../../../lib/supabase'
 import { esegui, useQuery } from '../../../lib/useQuery'
 import { AdminListinoConfiguratore } from './AdminListinoConfiguratore'
+import { AdminOfferte } from './AdminOfferte'
 
 const COLORI_STATO: Record<StatoOrdine, string> = {
   richiesto: 'bg-amber-50 text-amber-700',
@@ -39,13 +40,46 @@ function Dato({ etichetta, valore }: { etichetta: string; valore: string }) {
 }
 
 const virgola = (n: number) => String(n).replace('.', ',')
+const centesimi = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
+
+/** Link WhatsApp dal numero scritto dal cliente (senza prefisso si intende un cellulare italiano). */
+function linkWhatsApp(telefono: string, testo: string): string | null {
+  const t = telefono.trim()
+  let n = t.replace(/\D/g, '')
+  if (t.startsWith('00')) n = n.slice(2)
+  else if (!t.startsWith('+') && /^3\d{8,9}$/.test(n)) n = `39${n}`
+  else if (!t.startsWith('+')) return null
+  return n.length >= 8 ? `https://wa.me/${n}?text=${encodeURIComponent(testo)}` : null
+}
+
+/** A che punto è l'ordine: richiesta → preventivo → pagamento. */
+function Avanzamento({ stato }: { stato: StatoOrdine }) {
+  if (stato === 'annullato') return <BadgeOrdine stato={stato} />
+  const fatti = { richiesto: 1, preventivo_inviato: 2, pagato: 3 }[stato]
+  return (
+    <ol className="grid grid-cols-3 gap-2" aria-label="Avanzamento dell'ordine">
+      {['Richiesta ricevuta', 'Preventivo inviato', 'Pagato'].map((nome, i) => (
+        <li key={nome} aria-current={i + 1 === fatti ? 'step' : undefined}>
+          <span className={`block h-1.5 rounded-full ${i < fatti ? 'bg-brand-600' : 'bg-slate-200'}`} />
+          <span className={`mt-1.5 block text-xs font-semibold ${i < fatti ? 'text-slate-900' : 'text-slate-400'}`}>{nome}</span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function giorniFa(iso: string): string {
+  const g = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
+  return g <= 0 ? 'oggi' : g === 1 ? 'ieri' : `${g} giorni fa`
+}
 
 function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato: () => void }) {
   const modificabile = ordine.stato === 'richiesto' || ordine.stato === 'preventivo_inviato'
   const det = ordine.dettaglio_preventivo
   const [urgenzaOk, setUrgenzaOk] = useState(ordine.urgenza_confermata)
-  // Totale suggerito dal configuratore (con l'urgenza solo se la confermi): è un aiuto, il prezzo lo decidi tu
-  const suggerito = (conUrgenza: boolean) => (det ? Number(det.subtotale) + (conUrgenza ? Number(det.urgenza_importo) : 0) : null)
+  // Totale suggerito: la stima vista dal cliente, offerta compresa (urgenza solo se la confermi). Il prezzo lo decidi tu
+  const suggerito = (conUrgenza: boolean) =>
+    det ? centesimi(Number(det.subtotale) - Number(det.offerta?.sconto ?? 0) + (conUrgenza ? Number(det.urgenza_importo) : 0)) : null
   // Prezzo iniziale: quello già confermato; altrimenti il suggerimento del listino, ma solo se è completo
   // (le richieste «da approvare a mano» partono vuote, così il prezzo lo decidi tu).
   const prezzoIniziale = ordine.prezzo != null ? virgola(ordine.prezzo) : det && !det.approvazione_manuale ? virgola(suggerito(ordine.urgenza_confermata) ?? 0) : ''
@@ -94,7 +128,7 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
                 dettaglio_preventivo: {
                   ...det,
                   urgenza_confermata: urgenzaOk,
-                  totale: Math.round(((suggerito(urgenzaOk) ?? 0) + Number.EPSILON) * 100) / 100,
+                  totale: suggerito(urgenzaOk) ?? 0,
                 },
               }
             : {}),
@@ -131,7 +165,7 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
     ...(det
       ? {
           urgenza_confermata: urgenzaOk,
-          dettaglio_preventivo: { ...det, urgenza_confermata: urgenzaOk, totale: Math.round(((suggerito(urgenzaOk) ?? 0) + Number.EPSILON) * 100) / 100 },
+          dettaglio_preventivo: { ...det, urgenza_confermata: urgenzaOk, totale: suggerito(urgenzaOk) ?? 0 },
         }
       : {}),
   })
@@ -206,8 +240,21 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
     `Ciao ${ordine.cliente_nome},\n\nil tuo preventivo è pronto. Da questo link puoi vedere il prezzo, leggere il contratto e acquistare:\n${link}\n\nA presto`,
   )}`
 
+  const whatsapp = linkWhatsApp(
+    ordine.cliente_telefono,
+    ordine.stato === 'preventivo_inviato'
+      ? `Ciao ${ordine.cliente_nome}, il tuo preventivo Forma Web è pronto: ${link}`
+      : `Ciao ${ordine.cliente_nome}, ti scrivo da Forma Web per la tua richiesta ${numeroOrdine(ordine)}.`,
+  )
+  // Confronto tra il prezzo che stai scrivendo e quello suggerito (solo se la stima è completa)
+  const base = det && !det.approvazione_manuale && !inProva ? suggerito(urgenzaOk) : null
+  const scritto = parseNumero(prezzo)
+  const scarto = base && scritto > 0 ? Math.round(((scritto - base) / base) * 100) : null
+
   return (
     <div className="space-y-6">
+      <Avanzamento stato={ordine.stato} />
+
       <dl className="grid gap-4 text-sm sm:grid-cols-2">
         <Dato etichetta="Cliente" valore={ordine.cliente_nome} />
         <Dato etichetta="Email" valore={ordine.cliente_email} />
@@ -320,6 +367,39 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
             )}
           </p>
         )}
+        {det && !inProva && modificabile && (
+          <div className="space-y-2 rounded-xl border border-brand-200 bg-brand-50/50 p-3 text-sm">
+            <dl className="space-y-1">
+              {det.subtotale_listino != null && Number(det.subtotale_listino) !== Number(det.subtotale) && (
+                <div className="flex justify-between gap-4 text-slate-500">
+                  <dt>A listino pieno</dt>
+                  <dd className="tabular-nums">{formatEuro(det.subtotale_listino)}</dd>
+                </div>
+              )}
+              <div className="flex justify-between gap-4 text-slate-700">
+                <dt>Stima mostrata al cliente{det.offerta ? ', prima dello sconto' : ''}</dt>
+                <dd className="tabular-nums">{formatEuro(det.subtotale)}</dd>
+              </div>
+              {det.offerta && (
+                <div className="flex justify-between gap-4 font-medium text-emerald-700">
+                  <dt>Offerta −{det.offerta.percentuale}% (richiesta fatta entro la scadenza)</dt>
+                  <dd className="tabular-nums">−{formatEuro(det.offerta.sconto)}</dd>
+                </div>
+              )}
+              <div className="flex justify-between gap-4 border-t border-brand-200 pt-1 font-semibold text-slate-900">
+                <dt>Prezzo suggerito{det.approvazione_manuale ? ' (parziale)' : ''}</dt>
+                <dd className="tabular-nums">{formatEuro(suggerito(urgenzaOk))}</dd>
+              </div>
+            </dl>
+            <button type="button" className="btn-secondary py-1.5 text-xs" onClick={() => setPrezzo(virgola(suggerito(urgenzaOk) ?? 0))}>
+              Usa il prezzo suggerito
+            </button>
+            {det.offerta && det.approvazione_manuale && (
+              <p className="text-xs text-amber-800">Sugli importi che aggiungi a mano lo sconto del {det.offerta.percentuale}% non è calcolato: applicalo tu.</p>
+            )}
+          </div>
+        )}
+
         <fieldset disabled={!modificabile} className="grid gap-4 sm:grid-cols-3">
           <label className="block">
             <span className="label">{inProva ? 'Prezzo pieno del sito (€)' : 'Prezzo totale (€)'}</span>
@@ -343,6 +423,12 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
           </label>
         </fieldset>
 
+        {modificabile && scarto != null && scarto !== 0 && (
+          <p className={`text-xs font-medium ${det?.offerta && scarto > 0 ? 'text-amber-800' : 'text-slate-600'}`}>
+            Il prezzo scritto è {Math.abs(scarto)}% {scarto > 0 ? 'sopra' : 'sotto'} quello suggerito.
+            {det?.offerta && scarto > 0 && ` Il cliente si aspetta lo sconto del ${det.offerta.percentuale}%.`}
+          </p>
+        )}
         {errore && <MessaggioErrore>{errore}</MessaggioErrore>}
         {esito && <MessaggioSuccesso>{esito}</MessaggioSuccesso>}
 
@@ -423,6 +509,11 @@ function DettaglioOrdine({ ordine, onSalvato }: { ordine: OrdineSito; onSalvato:
           <a className="btn-secondary text-xs" href={mail}>
             <Icon name="mail" className="h-4 w-4" /> Scrivi al cliente
           </a>
+          {whatsapp && (
+            <a className="btn-secondary text-xs" href={whatsapp} target="_blank" rel="noopener noreferrer">
+              <Icon name="chat" className="h-4 w-4" /> WhatsApp
+            </a>
+          )}
         </div>
       </div>
 
@@ -505,9 +596,13 @@ function ModelloContratto() {
   )
 }
 
+const SCHEDE = { ordini: 'Richieste', offerte: 'Offerte', listino: 'Listino prezzi e servizi', modello: 'Modello contratto' } as const
+type Scheda = keyof typeof SCHEDE
+
 export default function AdminPreventivi() {
   const { isAdmin } = useAuth()
-  const [scheda, setScheda] = useState<'ordini' | 'listino' | 'modello'>('ordini')
+  const [scheda, setScheda] = useState<Scheda>('ordini')
+  const [cerca, setCerca] = useState('')
   const [filtro, setFiltro] = useState<StatoOrdine | ''>('richiesto')
   const [apertoId, setApertoId] = useState<string | null>(null)
 
@@ -521,7 +616,27 @@ export default function AdminPreventivi() {
     for (const o of dati ?? []) c[o.stato] = (c[o.stato] ?? 0) + 1
     return c
   }, [dati])
-  const filtrati = (dati ?? []).filter((o) => !filtro || o.stato === filtro)
+  const ago = cerca.trim().toLowerCase()
+  const filtrati = (dati ?? []).filter(
+    (o) =>
+      (!filtro || o.stato === filtro) &&
+      (!ago || [numeroOrdine(o), o.cliente_nome, o.cliente_email, o.cliente_telefono, o.nome_attivita, o.tipo_sito].some((v) => v?.toLowerCase().includes(ago))),
+  )
+  const riassunto = useMemo(() => {
+    const di = (s: StatoOrdine) => (dati ?? []).filter((o) => o.stato === s)
+    const somma = (n: (number | null)[]) => n.reduce<number>((t, x) => t + Number(x ?? 0), 0)
+    const [nuove, inviati, pagati] = [di('richiesto'), di('preventivo_inviato'), di('pagato')]
+    const quotati = inviati.length + pagati.length
+    return {
+      nuove: nuove.length,
+      stimaNuove: somma(nuove.map((o) => o.totale_indicativo)),
+      inviati: inviati.length,
+      inAttesa: somma(inviati.map((o) => o.prezzo)),
+      pagati: pagati.length,
+      incassato: somma(pagati.map((o) => o.importo_pagato)),
+      conversione: quotati ? Math.round((pagati.length / quotati) * 100) : null,
+    }
+  }, [dati])
   const aperto = dati?.find((o) => o.id === apertoId) ?? null
 
   if (!isAdmin) return <MessaggioErrore>Solo l'amministratore gestisce preventivi e ordini dei clienti.</MessaggioErrore>
@@ -530,26 +645,55 @@ export default function AdminPreventivi() {
     <>
       <IntestazionePagina titolo="Preventivi e ordini" sottotitolo="Richieste dei clienti dal sito: rispondi con il preventivo, il cliente accetta il contratto e paga." />
 
-      <div className="mb-5 flex gap-2">
-        {(['ordini', 'listino', 'modello'] as const).map((s) => (
-          <button key={s} onClick={() => setScheda(s)} className={scheda === s ? 'btn-primary' : 'btn-secondary'}>
-            {s === 'ordini' ? 'Ordini' : s === 'listino' ? 'Listino prezzi e servizi' : 'Modello contratto'}
+      <div className="mb-6 flex gap-6 overflow-x-auto border-b border-slate-200" role="tablist">
+        {(Object.keys(SCHEDE) as Scheda[]).map((s) => (
+          <button
+            key={s}
+            role="tab"
+            aria-selected={scheda === s}
+            onClick={() => setScheda(s)}
+            className={`-mb-px border-b-2 pb-3 text-sm font-semibold whitespace-nowrap transition ${
+              scheda === s ? 'border-brand-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            {SCHEDE[s]}
           </button>
         ))}
       </div>
 
-      {scheda === 'modello' ? (
+      {scheda === 'offerte' ? (
+        <AdminOfferte />
+      ) : scheda === 'modello' ? (
         <ModelloContratto />
       ) : scheda === 'listino' ? (
         <AdminListinoConfiguratore />
       ) : (
         <>
-          <div className="mb-4 flex flex-wrap gap-2">
-            {(['richiesto', 'preventivo_inviato', 'pagato', 'annullato', ''] as const).map((s) => (
-              <button key={s || 'tutti'} onClick={() => setFiltro(s)} className={filtro === s ? 'btn-primary' : 'btn-secondary'}>
-                {s ? ETICHETTE_STATO_ORDINE[s] : 'Tutti'} ({conteggi[s] ?? 0})
-              </button>
-            ))}
+          {dati && (
+            <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
+              <StatCard etichetta="Da quotare" valore={riassunto.nuove} icona="clock" tono="ambra" nota={riassunto.nuove ? `Stima totale ${circa(riassunto.stimaNuove)}` : 'Sei in pari'} />
+              <StatCard etichetta="In attesa del cliente" valore={formatEuro(riassunto.inAttesa)} icona="mail" nota={`${riassunto.inviati} ${riassunto.inviati === 1 ? 'preventivo inviato' : 'preventivi inviati'}`} />
+              <StatCard etichetta="Incassato" valore={formatEuro(riassunto.incassato)} icona="wallet" tono="verde" nota={`${riassunto.pagati} ${riassunto.pagati === 1 ? 'ordine pagato' : 'ordini pagati'}`} />
+              <StatCard etichetta="Preventivi accettati" valore={riassunto.conversione == null ? '—' : `${riassunto.conversione}%`} icona="chart" tono="slate" nota="Pagati sul totale dei quotati" />
+            </div>
+          )}
+
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {(['richiesto', 'preventivo_inviato', 'pagato', 'annullato', ''] as const).map((s) => (
+                <button key={s || 'tutti'} onClick={() => setFiltro(s)} aria-pressed={filtro === s} className={filtro === s ? 'btn-primary' : 'btn-secondary'}>
+                  {s ? ETICHETTE_STATO_ORDINE[s] : 'Tutti'} ({conteggi[s] ?? 0})
+                </button>
+              ))}
+            </div>
+            <input
+              type="search"
+              value={cerca}
+              onChange={(e) => setCerca(e.target.value)}
+              placeholder="Cerca cliente, email, numero…"
+              aria-label="Cerca tra gli ordini"
+              className="input lg:max-w-xs"
+            />
           </div>
 
           {caricamento ? (
@@ -560,7 +704,7 @@ export default function AdminPreventivi() {
             </MessaggioErrore>
           ) : filtrati.length === 0 ? (
             <div className="card">
-              <Vuoto icona="cart" titolo="Nessun ordine in questa categoria" />
+              <Vuoto icona="cart" titolo={ago ? 'Nessun risultato per questa ricerca' : 'Nessun ordine in questa categoria'} />
             </div>
           ) : (
             <div className="card overflow-hidden">
@@ -588,9 +732,23 @@ export default function AdminPreventivi() {
                         <td>
                           {o.nome_attivita || o.tipo_sito || '—'}
                           {o.tipo_ordine === 'prova' && <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">Prova</span>}
+                          {o.dettaglio_preventivo?.offerta && (
+                            <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-emerald-700">−{o.dettaglio_preventivo.offerta.percentuale}%</span>
+                          )}
                         </td>
-                        <td className="whitespace-nowrap">{formatData(o.created_at)}</td>
-                        <td className="whitespace-nowrap tabular-nums">{o.prezzo != null ? formatEuro(o.prezzo) : '—'}</td>
+                        <td className="whitespace-nowrap">
+                          {formatData(o.created_at)}
+                          {o.stato === 'richiesto' && <span className="block text-xs text-slate-500">{giorniFa(o.created_at)}</span>}
+                        </td>
+                        <td className="whitespace-nowrap tabular-nums">
+                          {o.prezzo != null ? (
+                            <span className="font-semibold text-slate-900">{formatEuro(o.prezzo)}</span>
+                          ) : o.totale_indicativo ? (
+                            <span className="text-slate-500">{circa(Number(o.totale_indicativo))}</span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                         <td>
                           <BadgeOrdine stato={o.stato} />
                           {o.stato === 'pagato' && o.metodo_pagamento === 'contanti' && <span className="ml-1.5 text-xs text-slate-500">contanti</span>}

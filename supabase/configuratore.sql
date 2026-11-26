@@ -12,6 +12,12 @@
 -- si paga dopo il mese, solo se il sito è piaciuto. Ogni voce del listino può essere
 -- esclusa dalla prova (colonna in_prova). L'admin può segnare un pagamento in contanti.
 --
+-- Prezzi mostrati e offerte (si impostano da Preventivi → Listino prezzi e offerte)
+--   ribasso_stima           il cliente vede prezzi «circa», più bassi del listino di questa %
+--   offerta_sconto/scadenza sconto sull'acquisto del sito, valido fino alla data compresa
+--   prova_offerta_scadenza  data fino a cui la «Prova un mese» è presentata come offerta
+-- Il prezzo finale resta quello che scrivi tu sull'ordine.
+--
 -- Cosa aggiunge
 --   configuratore_voci          listino: tipologie di sito, funzionalità extra, servizi esterni
 --   configuratore_impostazioni  % urgenza e testi di avviso
@@ -131,7 +137,11 @@ insert into public.configuratore_impostazioni (chiave, valore) values
   ('avviso_servizi_esterni','I costi dei servizi esterni variano in base alle funzionalità richieste e ai piani scelti. Verranno comunicati e concordati prima dell’attivazione.'),
   ('avviso_preventivo',     'Preventivo indicativo, soggetto a conferma da parte di FormaWeb.'),
   ('prova_prezzo',          '100'),
-  ('prova_sconto_extra',    '70')
+  ('prova_sconto_extra',    '70'),
+  ('ribasso_stima',         '10'),
+  ('offerta_sconto',        '30'),
+  ('offerta_scadenza',      '2026-12-08'),
+  ('prova_offerta_scadenza','2026-12-31')
 on conflict (chiave) do nothing;
 
 -- Disponibilità nella prova di un mese (colonna nuova). Alla prima esecuzione le voci
@@ -172,8 +182,10 @@ alter table public.progetti    add column if not exists prova_fino_al        dat
 -- -----------------------------------------------------------------------------
 -- Calcolo del preventivo (unica fonte di verità; il sito ne mostra una copia
 -- istantanea solo per comodità).
---   totale = prezzo base + pagine aggiuntive + extra (esclusi quelli già inclusi)
---            + supplemento urgenza SOLO se confermato da FormaWeb
+--   ogni prezzo = listino ridotto del «ribasso_stima», arrotondato all'euro
+--   subtotale   = prezzo base + pagine aggiuntive + extra (esclusi quelli già inclusi)
+--   totale      = subtotale − sconto dell'offerta (non per la prova, solo entro la scadenza)
+--                 + supplemento urgenza SOLO se confermato da FormaWeb
 -- Input: {"tipologia":"codice","pagine":6,"extra":{"codice":quantità,…},"urgenza_confermata":false}
 -- -----------------------------------------------------------------------------
 create or replace function public.calcola_preventivo(p jsonb)
@@ -208,6 +220,12 @@ declare
   pr_scontati  numeric;
   pr_ora       numeric;
   prova_json   jsonb := null;
+  rib          numeric := 0;       -- ribasso dei prezzi mostrati (%)
+  off_pct      numeric := 0;       -- sconto dell'offerta (%)
+  off_fino     text;
+  off_importo  numeric := 0;
+  off_json     jsonb := null;
+  sub_listino  numeric := 0;       -- stesso subtotale a listino pieno (per l'admin)
 begin
   select * into t from public.configuratore_voci
    where codice = p ->> 'tipologia' and gruppo = 'tipologia' and attivo;
@@ -239,9 +257,15 @@ begin
     from public.configuratore_impostazioni where chiave = 'urgenza_percentuale';
   pct := coalesce(pct, 20);
 
+  select case when valore ~ '^[0-9]{1,2}([.,][0-9]+)?$' then replace(valore, ',', '.')::numeric else 0 end
+    into rib
+    from public.configuratore_impostazioni where chiave = 'ribasso_stima';
+  rib := coalesce(rib, 0);
+
   -- prezzo base
   if t.modalita in ('da', 'preventivo') then appr := true; end if;
-  sub := coalesce(t.prezzo, 0);
+  sub := coalesce(round(t.prezzo * (100 - rib) / 100), 0);
+  sub_listino := coalesce(t.prezzo, 0);
 
   -- pagine aggiuntive (non per i siti a preventivo)
   if t.modalita <> 'preventivo' then
@@ -256,7 +280,8 @@ begin
     if p_prova and not pag_prova then
       raise exception 'Nella prova di un mese puoi avere al massimo % pagine.', t.pagine_incluse;
     end if;
-    pag_importo := pag_extra * pag_prezzo;
+    sub_listino := sub_listino + pag_extra * pag_prezzo;
+    pag_importo := pag_extra * round(pag_prezzo * (100 - rib) / 100);
     sub := sub + pag_importo;
     ext_sum := ext_sum + pag_importo;
   end if;
@@ -283,7 +308,8 @@ begin
     if p_prova and not incluso and not v.in_prova then
       raise exception 'La funzionalità "%" non è disponibile per la prova di un mese.', v.nome;
     end if;
-    importo := case when incluso then 0 else coalesce(v.prezzo, 0) * qty end;
+    importo := case when incluso then 0 else coalesce(round(v.prezzo * (100 - rib) / 100), 0) * qty end;
+    sub_listino := sub_listino + case when incluso then 0 else coalesce(v.prezzo, 0) * qty end;
     ext_sum := ext_sum + importo;
     if not incluso and v.modalita in ('da', 'preventivo') then appr := true; end if;
 
@@ -293,7 +319,19 @@ begin
     sub := sub + importo;
   end loop;
 
-  urg := round(sub * pct / 100, 2);
+  -- offerta sull'acquisto del sito: vale fino alla data di scadenza compresa (ora italiana)
+  if not p_prova then
+    select case when valore ~ '^[0-9]{1,2}([.,][0-9]+)?$' then replace(valore, ',', '.')::numeric else 0 end
+      into off_pct from public.configuratore_impostazioni where chiave = 'offerta_sconto';
+    select valore into off_fino from public.configuratore_impostazioni where chiave = 'offerta_scadenza';
+    if coalesce(off_pct, 0) > 0 and off_fino ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+       and to_char(now() at time zone 'Europe/Rome', 'YYYY-MM-DD') <= off_fino then
+      off_importo := round(sub * off_pct / 100, 2);
+      off_json := jsonb_build_object('percentuale', off_pct, 'scadenza', off_fino, 'sconto', off_importo);
+    end if;
+  end if;
+
+  urg := round((sub - off_importo) * pct / 100, 2);
 
   -- Prova un mese: si paga 100 € + le funzionalità aggiuntive scontate; il resto del prezzo pieno dopo il mese
   if p_prova then
@@ -318,17 +356,20 @@ begin
 
   return jsonb_build_object(
     'prova', prova_json,
-    'tipologia', jsonb_build_object('codice', t.codice, 'nome', t.nome, 'prezzo', t.prezzo, 'modalita', t.modalita),
+    'tipologia', jsonb_build_object('codice', t.codice, 'nome', t.nome, 'prezzo', round(t.prezzo * (100 - rib) / 100), 'modalita', t.modalita),
     'pagine', n,
     'pagine_incluse', t.pagine_incluse,
     'pagine_extra', pag_extra,
     'pagine_extra_importo', pag_importo,
     'righe', righe,
     'subtotale', sub,
+    'subtotale_listino', sub_listino,
+    'ribasso_percentuale', rib,
+    'offerta', off_json,
     'urgenza_percentuale', pct,
     'urgenza_importo', urg,
     'urgenza_confermata', urg_ok,
-    'totale', sub + case when urg_ok then urg else 0 end,
+    'totale', sub - off_importo + case when urg_ok then urg else 0 end,
     'approvazione_manuale', appr
   );
 end $$;
@@ -395,7 +436,7 @@ begin
     v_tipo   := c -> 'tipologia' ->> 'nome';
     v_pag_n  := (c ->> 'pagine')::integer;
     v_pagine := v_pag_n || case when v_pag_n = 1 then ' pagina' else ' pagine' end;
-    v_tot    := (c ->> 'subtotale')::numeric;
+    v_tot    := (c ->> 'totale')::numeric;      -- offerta compresa; l'urgenza no (non è confermata)
     v_appr   := (c ->> 'approvazione_manuale')::boolean;
 
     select coalesce(array_agg(left(

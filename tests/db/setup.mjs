@@ -23,7 +23,8 @@ grant select, insert, update, delete on storage.objects to anon, authenticated;
 grant select on storage.buckets to anon, authenticated;
 `
 
-export async function creaDb({ conConfiguratore = true } = {}) {
+/** `offerte: false` (default dei test) azzera ribasso e offerte: i risultati non dipendono dalla data di oggi. */
+export async function creaDb({ conConfiguratore = true, offerte = false } = {}) {
   const db = new PGlite()
   await db.exec(STUB)
   const log = []
@@ -37,6 +38,9 @@ export async function creaDb({ conConfiguratore = true } = {}) {
       log.push(`ERRORE ${f}: ${e.message}`)
       if (f === 'configuratore.sql' || f === 'ordini.sql') throw Object.assign(e, { log })
     }
+  }
+  if (conConfiguratore && !offerte) {
+    await db.exec("update public.configuratore_impostazioni set valore = '0' where chiave in ('ribasso_stima', 'offerta_sconto')")
   }
   return { db, log }
 }

@@ -134,8 +134,8 @@ export default function Ordine() {
 
         {params.get('nuovo') === '1' && ordine.stato === 'richiesto' && (
           <MessaggioSuccesso>
-            Richiesta inviata! <strong>Salva questo indirizzo</strong>: da qui vedrai il preventivo e potrai acquistare. Lo ritrovi anche sul tuo
-            dispositivo nella pagina «Sito su misura».
+            Richiesta inviata! <strong>Salva questo indirizzo</strong>: da qui vedrai il preventivo confermato e potrai accettarlo. Lo ritrovi anche sul tuo
+            dispositivo nella pagina «Crea il tuo preventivo».
           </MessaggioSuccesso>
         )}
 
